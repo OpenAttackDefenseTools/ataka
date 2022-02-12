@@ -14,9 +14,9 @@ COPY --chown=ataka:ataka ataka/common/requirements.txt ataka/common/
 RUN pip install --no-cache-dir --user -r ataka/common/requirements.txt
 COPY --chown=ataka:ataka ataka/common ataka/common
 
-COPY --chown=ataka:ataka ataka/ctfcode/requirements.txt ataka/ctfcode/
-RUN pip install --no-cache-dir --user -r ataka/ctfcode/requirements.txt
-COPY --chown=ataka:ataka ataka/ctfcode ataka/ctfcode
+COPY --chown=ataka:ataka ataka/cli/requirements.txt ataka/cli/
+RUN pip install --no-cache-dir --user -r ataka/cli/requirements.txt
+COPY --chown=ataka:ataka ataka/cli ataka/cli
 
-CMD [ "bash", "ataka/common/delayed_start.sh", "--", "python", "-m", "ataka.ctfcode" ]
+CMD [ "sleep", "infinity" ]
 

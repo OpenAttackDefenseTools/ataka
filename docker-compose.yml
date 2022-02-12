@@ -9,6 +9,7 @@ services:
     image: rabbitmq:3.9-management-alpine
     ports:
       - "0.0.0.0:15672:15672"
+      - "0.0.0.0:5672:5672"
     hostname: ataka-rabbitmq
     networks:
       - ataka
@@ -19,6 +20,8 @@ services:
   postgres:
     image: postgres:14-alpine
     hostname: ataka-postgres
+    ports:
+      - "0.0.0.0:5432:5432"
     networks:
       - ataka
     environment:
@@ -76,6 +79,20 @@ services:
       - postgres
       - rabbitmq
     hostname: ataka-ctfcode
+    networks:
+      - ataka
+    env_file:
+      - .env
+
+  cli:
+    image: cyberwehr/ataka-cli
+    build:
+      context: ./
+      dockerfile: ataka/cli/Dockerfile
+    depends_on:
+      - postgres
+      - rabbitmq
+    hostname: ataka-cli
     networks:
       - ataka
     env_file:

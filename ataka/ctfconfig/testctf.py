@@ -1,10 +1,10 @@
+import json
+import logging
+
+import requests
 
 from ataka.common import flag_status
-from ataka.common.model.target import Target
-
-import logging
-import requests
-import json
+from ataka.common.database.model.target import Target
 
 ### Config for framework
 ROUND_TIME = 120
@@ -13,7 +13,7 @@ FLAG_REGEX = r"[A-Z0-9]{31}="
 
 FLAG_BATCHSIZE = 100
 
-FLAG_RATELIMIT = 500 # Wait in milliseconds between each call of submit_flags()
+FLAG_RATELIMIT = 0.5  # Wait in seconds between each call of submit_flags()
 ### End config
 
 def get_targets():
@@ -34,15 +34,17 @@ def get_targets():
 
     return targets
 
+
 SUBMISSION_URL = "10.10.10.100"
 SUBMISSION_TOKEN = "30771485d3cb53a3"
 
 logger = logging.getLogger()
 
 RESPONSES = {
-    flag_status.INAKTIV: ['timeout', 'game not started', 'try again later', 'game over', 'is not up', 'no such flag'],
+    flag_status.INACTIVE: ['timeout', 'game not started', 'try again later', 'game over', 'is not up', 'no such flag'],
     flag_status.OK: ['accepted', 'congrat'],
-    flag_status.ERROR: ['bad', 'wrong', 'expired', 'unknown', 'your own', 'too old', 'not in database', 'already submitted', 'invalid flag'],
+    flag_status.ERROR: ['bad', 'wrong', 'expired', 'unknown', 'your own', 'too old', 'not in database',
+                        'already submitted', 'invalid flag'],
 }
 
 
@@ -52,7 +54,8 @@ def submit_flags(flags):
     payload = [flag.flag for flag in flags]
     headers = {'X-Team-Token': SUBMISSION_TOKEN, "Content-Type": "application/json"}
     logger.error("SUBMITTING " + json.dumps(payload))
-    r = requests.put("http://" + SUBMISSION_URL + "/flags", data=json.dumps(payload), headers=headers, verify=False, timeout=5)
+    r = requests.put("http://" + SUBMISSION_URL + "/flags", data=json.dumps(payload), headers=headers, verify=False,
+                     timeout=5)
     logger.error(str(r.status_code) + " " + json.dumps(r.json()))
 
     return [flag_status.OK for flag in flags]

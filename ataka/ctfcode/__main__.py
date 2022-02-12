@@ -1,13 +1,22 @@
-
-from ataka.ctfcode.ctf import CTF
-
+import asyncio
 import os
-import time
 
-ctf = CTF(os.environ["CTF"])
+from ataka.common import queue, database
+from .ctf import CTF
+from .flags import Flags
 
-print(ctf.get_round_time())
 
-time.sleep(5)
-ctf.reload()
-print(ctf.get_round_time())
+async def main():
+    # load ctf-specific code
+    ctf = CTF(os.environ["CTF"])
+
+    # initialize connections
+    await queue.connect()
+    await database.connect()
+
+    flags = Flags(ctf)
+    flags_task = asyncio.create_task(flags.poll_and_submit_flags())
+    await asyncio.gather(flags_task)
+
+
+asyncio.run(main())

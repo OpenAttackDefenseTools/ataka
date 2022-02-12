@@ -1,15 +1,15 @@
-
 from importlib import import_module, reload
+
 
 # A wrapper that loads the specified ctf by name, and wraps the api with support
 # for hot-reload.
-class CTF():
+class CTF:
     def __init__(self, name: str):
         self._module = import_module(f"ataka.ctfconfig.{name}")
 
     def reload(self):
         reload(self._module)
-    
+
     def get_targets(self):
         return self._module.get_targets()
 
@@ -27,4 +27,3 @@ class CTF():
 
     def submit_flags(self, flags):
         return self._module.submit_flags(flags)
-
