@@ -3,6 +3,9 @@ UNKNOWN = 'unknown'
 # everything is fine
 OK = 'ok'
 
+# Flag is currently being submitted
+PENDING = 'pending'
+
 # We already submitted this flag and the submission system tells us thats
 DUPLICATE = 'duplicate'
 
@@ -20,7 +23,7 @@ OWNFLAG = 'ownflag'
 
 # the flag is not longer active. This is used if a flags are restricted to a
 # specific time frame
-INAKTIV = 'inaktiv'
+INACTIVE = 'inactive'
 
 # flag fits the format and could be sent to the submission system, but the
 # submission system told us it is invalid
@@ -30,5 +33,5 @@ INVALID = 'invalid'
 # be working. Flags that are rejected might be sent again!
 SERVICEBROKEN = 'servicebroken'
 
-ALL = [UNKNOWN, OK, DUPLICATE, ERROR, RATELIMIT, EXCEPTION, OWNFLAG, INAKTIV,
-    INVALID, SERVICEBROKEN]
+ALL = [UNKNOWN, OK, PENDING, DUPLICATE, ERROR, RATELIMIT, EXCEPTION, OWNFLAG, INACTIVE,
+       INVALID, SERVICEBROKEN]
