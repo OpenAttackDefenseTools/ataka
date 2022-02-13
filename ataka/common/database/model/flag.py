@@ -1,9 +1,9 @@
 from sqlalchemy import Column, Integer, String, DateTime, func
 
-from ..config import Base
+from ..config import Base, JsonBase
 
 
-class Flag(Base):
+class Flag(Base, JsonBase):
     __tablename__ = "flags"
 
     id = Column(Integer, primary_key=True)

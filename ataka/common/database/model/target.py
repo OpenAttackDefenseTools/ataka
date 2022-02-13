@@ -1,9 +1,9 @@
 from sqlalchemy import Column, Integer, String
 
-from ..config import Base
+from ..config import Base, JsonBase
 
 
-class Target(Base):
+class Target(Base, JsonBase):
     __tablename__ = "targets"
 
     id = Column(Integer, primary_key=True)
