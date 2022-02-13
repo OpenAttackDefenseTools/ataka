@@ -1,4 +1,4 @@
-from ataka.common.database.model.flag import Flag
+from ataka.common.database.models import Flag
 from .queue import WorkQueue
 
 

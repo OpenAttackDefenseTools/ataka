@@ -3,8 +3,7 @@ import logging
 
 import requests
 
-from ataka.common import flag_status
-from ataka.common.database.model.target import Target
+from ataka.common.database.models import FlagStatus, Target
 
 ### Config for framework
 ROUND_TIME = 120
@@ -41,15 +40,15 @@ SUBMISSION_TOKEN = "30771485d3cb53a3"
 logger = logging.getLogger()
 
 RESPONSES = {
-    flag_status.INACTIVE: ['timeout', 'game not started', 'try again later', 'game over', 'is not up', 'no such flag'],
-    flag_status.OK: ['accepted', 'congrat'],
-    flag_status.ERROR: ['bad', 'wrong', 'expired', 'unknown', 'your own', 'too old', 'not in database',
-                        'already submitted', 'invalid flag'],
+    FlagStatus.INACTIVE: ['timeout', 'game not started', 'try again later', 'game over', 'is not up', 'no such flag'],
+    FlagStatus.OK: ['accepted', 'congrat'],
+    FlagStatus.ERROR: ['bad', 'wrong', 'expired', 'unknown', 'your own', 'too old', 'not in database',
+                       'already submitted', 'invalid flag'],
 }
 
 
 def submit_flags(flags):
-    return [flag_status.OK for flag in flags]
+    return [FlagStatus.OK for flag in flags]
 
     payload = [flag.flag for flag in flags]
     headers = {'X-Team-Token': SUBMISSION_TOKEN, "Content-Type": "application/json"}
@@ -58,12 +57,12 @@ def submit_flags(flags):
                      timeout=5)
     logger.error(str(r.status_code) + " " + json.dumps(r.json()))
 
-    return [flag_status.OK for flag in flags]
+    return [FlagStatus.OK for flag in flags]
 
     if r.status_code == 429:
-        return flag_status.RATELIMIT
+        return FlagStatus.RATELIMIT
     if r.status_code == 200:
-        return flag_status.OK
+        return FlagStatus.OK
         for item in r.json():
             response = item['msg'].strip()
             response = response.replace('[{}] '.format(item['flag']), '')
@@ -74,8 +73,8 @@ def submit_flags(flags):
                     return status
 
             else:
-                return flag_status.ERROR
+                return FlagStatus.ERROR
 
     else:
         logger.error("Exception during flag submission: {} -> {}".format(str(r.status_code), str(r.text)))
-        return flag_status.ERROR
+        return FlagStatus.ERROR

@@ -2,8 +2,8 @@ from asyncio import TimeoutError, sleep
 
 from sqlalchemy.future import select
 
-from ataka.common import queue, database, flag_status
-from ataka.common.database.model.flag import Flag
+from ataka.common import queue, database
+from ataka.common.database.models import Flag, FlagStatus
 from .ctf import CTF
 from ..common.queue import FlagQueue
 
@@ -27,16 +27,16 @@ class Flags:
                     async for flag in flag_queue.wait_for_messages(timeout=ratelimit):
                         print(f"Got flag {flag}")
 
-                        stmt = select(Flag).where(Flag.flag == flag.flag)
+                        stmt = select(Flag).where(Flag.id != flag.id and Flag.flag == flag.flag)
                         result = (await session.execute(stmt)).scalars().first()
 
                         # if there is already such a flag
                         # do not submit, but put in DUPLICATE in database
                         if result is None:
-                            flag.status = flag_status.PENDING
+                            flag.status = FlagStatus.PENDING
                             submitlist += [flag]
                         else:
-                            flag.status = flag_status.DUPLICATE
+                            flag.status = FlagStatus.DUPLICATE
 
                         session.add(flag)
                         await session.commit()
