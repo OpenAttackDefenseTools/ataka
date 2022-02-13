@@ -5,8 +5,8 @@ from typing import List
 import typer
 from pamqp.specification import Basic
 
-from ataka.common import queue
-from ataka.common.database.model.flag import Flag
+from ataka.common import queue, database
+from ataka.common.database.models import Flag, FlagStatus
 from ataka.common.queue import get_channel, ControlQueue, ControlMessage, FlagQueue
 
 
@@ -24,18 +24,24 @@ app = typer.Typer()
 @coro
 async def submit_flag(flag: List[str]):
     await queue.connect()
+    await database.connect()
 
-    channel = await queue.get_channel()
+    async with database.get_session() as session:
+        flag_objects = [Flag(flag=f, status=FlagStatus.QUEUED) for f in flag]
+        session.add_all(flag_objects)
+        await session.commit()
 
-    flag_queue = await FlagQueue.get(channel)
-    for f in flag:
-        result = await flag_queue.send_message(Flag(flag=f))
-        if isinstance(result, Basic.Ack):
-            print(f"Submitted {f}")
-        else:
-            print(result)
+        async with await queue.get_channel() as channel:
+            flag_queue = await FlagQueue.get(channel)
+            for flag_object in flag_objects:
+                result = await flag_queue.send_message(flag_object)
+                if isinstance(result, Basic.Ack):
+                    print(f"Submitted {flag_object.flag}")
+                else:
+                    print(result)
 
     await queue.disconnect()
+    await database.disconnect()
 
 
 @app.command()
