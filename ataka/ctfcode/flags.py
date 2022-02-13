@@ -1,62 +1,56 @@
-import asyncio
+from asyncio import TimeoutError, sleep
 
 from sqlalchemy.future import select
 
 from ataka.common import queue, database, flag_status
 from ataka.common.database.model.flag import Flag
 from .ctf import CTF
+from ..common.queue import FlagQueue
 
 
-# A wrapper that loads the specified ctf by name, and wraps the api with support
-# for hot-reload.
 class Flags:
+    # A wrapper that loads the specified ctf by name, and wraps the api with support
+    # for hot-reload.
     def __init__(self, ctf: CTF):
         self._ctf = ctf
 
     async def poll_and_submit_flags(self):
         channel = await queue.get_channel()
-        flags = await channel.declare_queue("flags", durable=True)
+        flag_queue = await FlagQueue.get(channel)
         async with database.get_session() as session:
             while True:
                 batchsize = self._ctf.get_flag_batchsize()
                 ratelimit = self._ctf.get_flag_ratelimit()
 
-                flaglist = []
-                resultlist = []
-                while len(flaglist) < batchsize:
-                    message = await flags.get(fail=False)
-                    if message is None:
-                        break
+                submitlist = []
+                try:
+                    async for flag in flag_queue.wait_for_messages(timeout=ratelimit):
+                        print(f"Got flag {flag}")
 
-                    # TODO: serialize and link to job
-                    flag = message.body.decode()
-                    print(f"Got flag {flag}")
+                        stmt = select(Flag).where(Flag.flag == flag.flag)
+                        result = (await session.execute(stmt)).scalars().first()
 
-                    stmt = select(Flag).where(Flag.flag == flag)
-                    result = (await session.execute(stmt)).scalars().first()
-                    # if there is already such a flag
-                    # do not submit, but put in DUPLICATE in database
-                    if result is not None:
-                        session.add(Flag(flag=flag, status=flag_status.DUPLICATE))
+                        # if there is already such a flag
+                        # do not submit, but put in DUPLICATE in database
+                        if result is None:
+                            flag.status = flag_status.PENDING
+                            submitlist += [flag]
+                        else:
+                            flag.status = flag_status.DUPLICATE
+
+                        session.add(flag)
                         await session.commit()
-                        message.ack()
-                        continue
 
-                    # insert as pending
-                    result = Flag(flag=flag, status=flag_status.PENDING)
-                    session.add(result)
+                        if len(submitlist) >= batchsize:
+                            break
+                except TimeoutError:
+                    pass
+
+                if len(submitlist) > 0:
+                    print(f"Submitting {len(submitlist)} flags")
+                    statuslist = self._ctf.submit_flags([flag.flag for flag in submitlist])
+
+                    for flag, status in zip(submitlist, statuslist):
+                        flag.status = status
                     await session.commit()
-                    message.ack()
-
-                    flaglist += [flag]
-                    resultlist += [result]
-
-                if len(flaglist) > 0:
-                    print(f"Submitting {len(flaglist)} flags")
-                    statuslist = self._ctf.submit_flags(flaglist)
-
-                    for result, status in zip(resultlist, statuslist):
-                        result.status = status
-                    await session.commit()
-
-                await asyncio.sleep(ratelimit)
+                    await sleep(ratelimit)

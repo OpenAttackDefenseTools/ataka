@@ -1,11 +1,13 @@
 import asyncio
 from functools import update_wrapper
+from typing import List
 
 import typer
-from aio_pika import Message
 from pamqp.specification import Basic
 
-from ataka.common import queue, control_message
+from ataka.common import queue
+from ataka.common.database.model.flag import Flag
+from ataka.common.queue import get_channel, ControlQueue, ControlMessage, FlagQueue
 
 
 def coro(f):
@@ -20,17 +22,20 @@ app = typer.Typer()
 
 @app.command()
 @coro
-async def submit_flag(flag: str):
+async def submit_flag(flag: List[str]):
     await queue.connect()
 
     channel = await queue.get_channel()
-    result = await channel.default_exchange.publish(Message(body=flag.encode()), routing_key='flags')
-    if isinstance(result, Basic.Ack):
-        print("Submitting...")
-    else:
-        print(result)
 
-    await channel.close()
+    flag_queue = await FlagQueue.get(channel)
+    for f in flag:
+        result = await flag_queue.send_message(Flag(flag=f))
+        if isinstance(result, Basic.Ack):
+            print(f"Submitted {f}")
+        else:
+            print(result)
+
+    await queue.disconnect()
 
 
 @app.command()
@@ -38,14 +43,15 @@ async def submit_flag(flag: str):
 async def reload():
     await queue.connect()
 
-    channel = await queue.get_channel()
-    result = await channel.default_exchange.publish(Message(body=control_message.RELOAD_CONFIG), routing_key='control')
+    channel = await get_channel()
+    controlQueue = await ControlQueue.get(channel)
+    result = await controlQueue.send_message(ControlMessage.RELOAD_CONFIG)
     if isinstance(result, Basic.Ack):
         print("OK")
     else:
         print(result)
 
-    await channel.close()
+    await queue.disconnect()
 
 
 app()
