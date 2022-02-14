@@ -1,22 +1,29 @@
-import json
 import logging
 
-import requests
+from ataka.common.database.models import FlagStatus
 
-from ataka.common.database.models import FlagStatus, Target
-
-### Config for framework
-ROUND_TIME = 120
+# Config for framework
+ROUND_TIME = 10
 
 FLAG_REGEX = r"[A-Z0-9]{31}="
 
 FLAG_BATCHSIZE = 100
 
 FLAG_RATELIMIT = 0.5  # Wait in seconds between each call of submit_flags()
-### End config
+
+START_TIME = 1644859882
+# End config
+
+
+def get_services():
+    return ["buffalo", "gopher_coin", "kyc", "oly_consensus", "swiss_keys", "to_the_moon", "wall.eth"]
+
 
 def get_targets():
-    return []
+    return {service: [{"ip": f"10.99.{i}.2", "extra": ""} for i in range(123)] for service in get_services()}
+
+
+"""
     r = requests.get("http://10.10.10.10/api/client/attack_data")
 
     targets = []
@@ -32,12 +39,13 @@ def get_targets():
         ids += 1
 
     return targets
-
-
-SUBMISSION_URL = "10.10.10.100"
-SUBMISSION_TOKEN = "30771485d3cb53a3"
+"""
 
 logger = logging.getLogger()
+
+"""
+SUBMISSION_URL = "10.10.10.100"
+SUBMISSION_TOKEN = "30771485d3cb53a3"
 
 RESPONSES = {
     FlagStatus.INACTIVE: ['timeout', 'game not started', 'try again later', 'game over', 'is not up', 'no such flag'],
@@ -45,11 +53,14 @@ RESPONSES = {
     FlagStatus.ERROR: ['bad', 'wrong', 'expired', 'unknown', 'your own', 'too old', 'not in database',
                        'already submitted', 'invalid flag'],
 }
+"""
 
 
 def submit_flags(flags):
     return [FlagStatus.OK for flag in flags]
 
+
+"""
     payload = [flag.flag for flag in flags]
     headers = {'X-Team-Token': SUBMISSION_TOKEN, "Content-Type": "application/json"}
     logger.error("SUBMITTING " + json.dumps(payload))
@@ -78,3 +89,4 @@ def submit_flags(flags):
     else:
         logger.error("Exception during flag submission: {} -> {}".format(str(r.status_code), str(r.text)))
         return FlagStatus.ERROR
+"""

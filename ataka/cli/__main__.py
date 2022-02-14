@@ -7,7 +7,7 @@ from pamqp.specification import Basic
 
 from ataka.common import queue, database
 from ataka.common.database.models import Flag, FlagStatus
-from ataka.common.queue import get_channel, ControlQueue, ControlMessage, FlagQueue, FlagMessage
+from ataka.common.queue import get_channel, ControlQueue, ControlMessage, FlagQueue, FlagMessage, ControlAction
 
 
 def coro(f):
@@ -51,7 +51,7 @@ async def reload():
 
     channel = await get_channel()
     control_queue = await ControlQueue.get(channel)
-    result = await control_queue.send_message(ControlMessage.RELOAD_CONFIG)
+    result = await control_queue.send_message(ControlMessage(action=ControlAction.RELOAD_CONFIG))
     if isinstance(result, Basic.Ack):
         print("OK")
     else:

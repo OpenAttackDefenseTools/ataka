@@ -1,17 +1,20 @@
+from dataclasses import dataclass
 from enum import Enum
+from typing import Optional
 
 from .queue import PubSubQueue, Message
 
 
-class ControlMessage(bytes, Enum):
-    RELOAD_CONFIG = b"reload_config"
+class ControlAction(str, Enum):
+    RELOAD_CONFIG = "reload_config"
+    GET_CTF_CONFIG = "get_ctf_config"
+    CTF_CONFIG_UPDATE = "ctf_config_update"
 
-    def to_bytes(self) -> bytes:
-        return self.value
 
-    @classmethod
-    def from_bytes(cls, body: bytes):
-        return cls(body)
+@dataclass
+class ControlMessage(Message):
+    action: ControlAction
+    extra: dict = None
 
 
 class ControlQueue(PubSubQueue):

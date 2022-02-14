@@ -4,6 +4,7 @@ import os
 from ataka.common import queue, database
 from .ctf import CTF
 from .flags import Flags
+from .target_job_generator import TargetJobGenerator
 
 
 async def main():
@@ -14,10 +15,13 @@ async def main():
     # load ctf-specific code
     ctf = CTF(os.environ["CTF"])
     flags = Flags(ctf)
+    target_job_generator = TargetJobGenerator(ctf)
 
     reload_task = ctf.watch_for_reload()
     flags_task = flags.poll_and_submit_flags()
-    await asyncio.gather(flags_task, reload_task)
+    target_job_task = target_job_generator.run_loop()
+
+    await asyncio.gather(reload_task, flags_task, target_job_task)
 
 
 asyncio.run(main())
