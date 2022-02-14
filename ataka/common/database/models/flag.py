@@ -58,6 +58,5 @@ class Flag(Base, JsonBase):
     stdout = Column(Boolean)
     start = Column(Integer)
     end = Column(Integer)
-    match = Column(String)
 
     execution = relationship("Execution", back_populates="flags")
