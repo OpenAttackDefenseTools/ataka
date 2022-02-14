@@ -1,11 +1,23 @@
+import json
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, asdict
 
 import aio_pika
-from aio_pika import Message, ExchangeType
+
+
+@dataclass
+class Message:
+    def to_bytes(self) -> bytes:
+        return json.dumps(asdict(self)).encode()
+
+    @classmethod
+    def from_bytes(cls, body: bytes):
+        return cls(**json.loads(body.decode()))
 
 
 class Queue(ABC):
     queue_name: str
+    message_type: type[Message]
 
     _channel: aio_pika.Channel
 
@@ -26,7 +38,7 @@ class Queue(ABC):
     # send a message message
     async def send_message(self, message):
         exchange = await self._get_exchange()
-        return await exchange.publish(Message(body=self.serialize(message)),
+        return await exchange.publish(aio_pika.Message(body=self.message_type.to_bytes(message)),
                                       routing_key=self.queue_name)
 
     # a generator to return messages as they are received (endless loop)
@@ -34,26 +46,16 @@ class Queue(ABC):
         async with (await self._get_queue()).iterator(**kwargs) as queue_iter:
             async for message in queue_iter:
                 await message.ack()
-                yield self.parse(message.body)
-
-    @staticmethod
-    @abstractmethod
-    def serialize(message) -> bytes:
-        pass
-
-    @staticmethod
-    @abstractmethod
-    def parse(body: bytes):
-        pass
+                yield self.message_type.from_bytes(message.body)
 
 
-class PubSubQueue(Queue, ABC):
+class PubSubQueue(Queue):
     _exchange: aio_pika.Exchange = None
     _queue: aio_pika.Queue = None
 
     async def _get_exchange(self) -> aio_pika.Exchange:
         if self._exchange is None:
-            self._exchange = await self._channel.declare_exchange(self.queue_name, ExchangeType.FANOUT)
+            self._exchange = await self._channel.declare_exchange(self.queue_name, aio_pika.ExchangeType.FANOUT)
         return self._exchange
 
     async def _get_queue(self) -> aio_pika.Queue:
@@ -63,7 +65,7 @@ class PubSubQueue(Queue, ABC):
         return self._queue
 
 
-class WorkQueue(Queue, ABC):
+class WorkQueue(Queue):
     _queue: aio_pika.Queue = None
 
     async def _get_exchange(self) -> aio_pika.Exchange:

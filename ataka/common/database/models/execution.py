@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 from ..config import Base, JsonBase
 
 
-class ExecutionStatus(enum.Enum):
+class ExecutionStatus(str, enum.Enum):
     QUEUED = "queued"
     RUNNING = "running"
     FINISHED = "finished"
@@ -16,7 +16,7 @@ class Execution(Base, JsonBase):
     __tablename__ = "executions"
 
     id = Column(Integer, primary_key=True)
-    job_id = Column(Integer, ForeignKey("jobs.id"))
+    job_id = Column(Integer, ForeignKey("jobs.id"), index=True)
     target_id = Column(Integer, ForeignKey("targets.id"))
     status = Column(Enum(ExecutionStatus))
     stdout = Column(UnicodeText)
