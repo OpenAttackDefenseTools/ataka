@@ -2,9 +2,10 @@ import time
 from asyncio import sleep
 
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 
 from ataka.common import database
-from ataka.common.database.models import Job, JobExecutionStatus, Target, Exploit, ExploitStatus
+from ataka.common.database.models import Job, JobExecutionStatus, Target, Exploit, ExploitStatus, Execution
 from ataka.common.queue import JobQueue, get_channel, JobMessage, JobAction
 from .ctf import CTF
 
@@ -18,11 +19,12 @@ class TargetJobGenerator:
             job_queue = await JobQueue.get(channel)
 
             async with database.get_session() as session:
-                # Cancel all running jobs on scheduler restart
+                # Get all queued jobs
                 await job_queue.clear()
-                get_future_jobs = select(Job).where(
-                    Job.status.in_([JobExecutionStatus.QUEUED, JobExecutionStatus.RUNNING]))
+                get_future_jobs = select(Job) \
+                    .where(Job.status.in_([JobExecutionStatus.QUEUED, JobExecutionStatus.RUNNING]))
                 future_jobs = (await session.execute(get_future_jobs)).scalars()
+                # cancel the jobs
                 for job in future_jobs:
                     await job_queue.send_message(JobMessage(action=JobAction.CANCEL, job_id=job.id))
 
@@ -34,7 +36,7 @@ class TargetJobGenerator:
 
                     next_version = await session.execute(Target.version_seq)
 
-                    job_ids = []
+                    job_list = []
                     for service, targets in all_targets.items():
                         if service not in services:
                             # TODO: log warning
@@ -47,20 +49,27 @@ class TargetJobGenerator:
                         # if we have an exploit, submit a job for this service
                         get_latest_exploit = select(Exploit) \
                             .where(Exploit.service == service) \
-                            .where(Exploit.status == ExploitStatus.READY) \
-                            .order_by(Exploit.version.desc()) \
-                            .limit(1)
-                        latest_exploit = (await session.execute(get_latest_exploit)).scalars().first()
-                        if latest_exploit is None:
-                            continue
+                            .options(selectinload(Exploit.versions))
+                        exploit_list = (await session.execute(get_latest_exploit)).scalars()
+                        for exploit in exploit_list:
+                            print(f" versions {exploit.versions}")
+                            for exploit_version in exploit.versions:
+                                if not exploit_version.active or exploit_version.status != ExploitStatus.READY:
+                                    continue
 
-                        job_obj = Job(status=JobExecutionStatus.QUEUED, lifetime=round_time, exploit=latest_exploit)
-                        session.add(job_obj)
-                        job_ids += [job_obj.id]
+                                job_obj = Job(status=JobExecutionStatus.QUEUED, lifetime=round_time,
+                                              exploit_version=exploit_version)
+                                session.add(job_obj)
+
+                                session.add_all([Execution(job=job_obj, target=t,
+                                                           status=JobExecutionStatus.QUEUED) for t in target_objs])
+
+                                job_list += [job_obj]
+
                     await session.commit()
 
-                    for job_id in job_ids:
-                        await job_queue.send_message(JobMessage(action=JobAction.QUEUE, job_id=job_id))
+                    for job in job_list:
+                        await job_queue.send_message(JobMessage(action=JobAction.QUEUE, job_id=job.id))
 
                     # sleep until next tick
                     next_tick = self._ctf.get_next_tick_start()
