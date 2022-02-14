@@ -24,21 +24,24 @@ class Flags:
 
                 submitlist = []
                 try:
-                    async for flag in flag_queue.wait_for_messages(timeout=ratelimit):
+                    async for message in flag_queue.wait_for_messages(timeout=ratelimit):
+                        flag_id = message.flag_id
+                        flag = message.flag
                         print(f"Got flag {flag}")
 
-                        stmt = select(Flag).where(Flag.id != flag.id and Flag.flag == flag.flag)
-                        result = (await session.execute(stmt)).scalars().first()
+                        check_duplicates = select(Flag).where(Flag.id != flag_id).where(Flag.flag == flag).limit(1)
+                        duplicate = (await session.execute(check_duplicates)).scalars().first()
 
+                        get_flag = select(Flag).where(Flag.id == flag_id)
+                        flag_obj = (await session.execute(get_flag)).scalar_one()
                         # if there is already such a flag
                         # do not submit, but put in DUPLICATE in database
-                        if result is None:
-                            flag.status = FlagStatus.PENDING
-                            submitlist += [flag]
+                        if duplicate is None:
+                            flag_obj.status = FlagStatus.PENDING
+                            submitlist += [flag_obj]
                         else:
-                            flag.status = FlagStatus.DUPLICATE
+                            flag_obj.status = FlagStatus.DUPLICATE
 
-                        session.add(flag)
                         await session.commit()
 
                         if len(submitlist) >= batchsize:

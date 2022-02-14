@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 from ..config import Base, JsonBase
 
 
-class FlagStatus(enum.Enum):
+class FlagStatus(str, enum.Enum):
     UNKNOWN = 'unknown'
 
     # everything is fine
@@ -54,7 +54,7 @@ class Flag(Base, JsonBase):
     status = Column(Enum(FlagStatus))
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
 
-    execution_id = Column(Integer, ForeignKey("executions.id"))
+    execution_id = Column(Integer, ForeignKey("executions.id"), index=True)
     stdout = Column(Boolean)
     start = Column(Integer)
     end = Column(Integer)

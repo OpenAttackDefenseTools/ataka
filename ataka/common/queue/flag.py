@@ -1,15 +1,14 @@
-from ataka.common.database.models import Flag
-from .queue import WorkQueue
+from dataclasses import dataclass
+
+from .queue import WorkQueue, Message
+
+
+@dataclass
+class FlagMessage(Message):
+    flag_id: int
+    flag: str
 
 
 class FlagQueue(WorkQueue):
     queue_name = "flag"
-
-    @staticmethod
-    def serialize(message: Flag) -> bytes:
-        print(f"Serializing {message} to {message.to_json()}")
-        return message.to_json().encode()
-
-    @staticmethod
-    def parse(body: bytes) -> Flag:
-        return Flag.from_json(body.decode())
+    message_type = FlagMessage

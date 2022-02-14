@@ -1,19 +1,19 @@
 from enum import Enum
 
-from .queue import PubSubQueue
+from .queue import PubSubQueue, Message
 
 
-class ControlMessage(Enum):
+class ControlMessage(bytes, Enum):
     RELOAD_CONFIG = b"reload_config"
+
+    def to_bytes(self) -> bytes:
+        return self.value
+
+    @classmethod
+    def from_bytes(cls, body: bytes):
+        return cls(body)
 
 
 class ControlQueue(PubSubQueue):
     queue_name = "control"
-
-    @staticmethod
-    def serialize(message: ControlMessage) -> bytes:
-        return message.value
-
-    @staticmethod
-    def parse(body: bytes) -> ControlMessage:
-        return ControlMessage(body)
+    message_type = ControlMessage
