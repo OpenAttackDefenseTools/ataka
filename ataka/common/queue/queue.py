@@ -48,6 +48,10 @@ class Queue(ABC):
                 await message.ack()
                 yield self.message_type.from_bytes(message.body)
 
+    async def clear(self):
+        queue = await self._get_queue()
+        return await queue.purge()
+
 
 class PubSubQueue(Queue):
     _exchange: aio_pika.Exchange = None

@@ -5,6 +5,7 @@ import aio_pika
 
 from .control import *
 from .flag import *
+from .job import *
 
 connection = None
 
