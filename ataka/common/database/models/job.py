@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, DateTime, func, ForeignKey, Enum
+from sqlalchemy import Column, Integer, DateTime, func, ForeignKey, Enum, String
 from sqlalchemy.orm import relationship
 
 from .jobexecutionstatus import JobExecutionStatus
@@ -9,10 +9,10 @@ class Job(Base, JsonBase):
     __tablename__ = "jobs"
 
     id = Column(Integer, primary_key=True)
-    exploit_version_id = Column(Integer, ForeignKey("exploit_versions.id"), index=True)
+    exploit_id = Column(String, ForeignKey("exploits.id"), index=True)
     status = Column(Enum(JobExecutionStatus), index=True)
-    lifetime = Column(Integer)
+    timeout = Column(DateTime(timezone=True))
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
 
-    exploit_version = relationship("ExploitVersion")
+    exploit = relationship("Exploit")
     executions = relationship("Execution", back_populates="job")

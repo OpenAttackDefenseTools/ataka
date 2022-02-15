@@ -1,4 +1,10 @@
-# ignore 
+# ignore alll
+**
+
+# allow these files
+!/ataka/**
+
+# ignore everything within these files
 venv
 **/__pycache__
 **/node_modules

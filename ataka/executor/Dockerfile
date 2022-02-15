@@ -1,18 +1,19 @@
 FROM python:3.10-slim
 
-RUN groupadd -r ataka && useradd --no-log-init -m -r -g ataka ataka
-USER ataka
-ENV PATH="/home/ataka/.local/bin:${PATH}"
+RUN pip install --no-cache-dir --upgrade pip
 
-RUN pip install --no-cache-dir --user --upgrade pip
+WORKDIR /
 
-WORKDIR /home/ataka/
+COPY ataka/common/requirements.txt /ataka/common/
+RUN pip install --no-cache-dir -r /ataka/common/requirements.txt
+COPY ataka/common /ataka/common
 
-COPY --chown=ataka:ataka ataka/common ataka/common
-COPY --chown=ataka:ataka ataka/executor/requirements.txt ataka/executor/
-RUN pip install --no-cache-dir --user -r ataka/executor/requirements.txt
+VOLUME /data/shared
+VOLUME /data/exploits
+VOLUME /data/persist
 
-COPY --chown=ataka:ataka ataka/executor ataka/executor
+COPY ataka/executor/requirements.txt /ataka/executor/
+RUN pip install --no-cache-dir -r /ataka/executor/requirements.txt
+COPY ataka/executor /ataka/executor
 
-CMD [ "python", "-m", "ataka.executor" ]
-
+CMD [ "bash", "/ataka/common/delayed_start.sh", "--", "python", "-m", "ataka.executor" ]
