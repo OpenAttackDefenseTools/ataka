@@ -4,3 +4,4 @@
 src/**/__pycache__/
 venv/
 **/.vagrant/
+data/

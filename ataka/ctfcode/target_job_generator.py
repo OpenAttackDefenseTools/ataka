@@ -1,13 +1,15 @@
 import time
 from asyncio import sleep
+from datetime import datetime
 
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
 from ataka.common import database
-from ataka.common.database.models import Job, JobExecutionStatus, Target, Exploit, ExploitStatus, Execution
+from ataka.common.database.models import Job, JobExecutionStatus, Target, Execution
 from ataka.common.queue import JobQueue, get_channel, JobMessage, JobAction
 from .ctf import CTF
+from ..common.database.models.exploit_history import ExploitHistory
 
 
 class TargetJobGenerator:
@@ -48,17 +50,14 @@ class TargetJobGenerator:
                         session.add_all(target_objs)
 
                         # if we have an exploit, submit a job for this service
-                        get_latest_exploit = select(Exploit) \
-                            .where(Exploit.service == service) \
-                            .options(selectinload(Exploit.versions))
-                        exploit_list = (await session.execute(get_latest_exploit)).scalars()
-                        for exploit in exploit_list:
-                            for exploit_version in exploit.versions:
-                                if not exploit_version.active or exploit_version.status != ExploitStatus.READY:
-                                    continue
-
-                                job_obj = Job(status=JobExecutionStatus.QUEUED, lifetime=round_time,
-                                              exploit_version=exploit_version)
+                        get_exploits_for_service = select(ExploitHistory) \
+                            .where(ExploitHistory.service == service) \
+                            .options(selectinload(ExploitHistory.exploits))
+                        exploit_list = (await session.execute(get_exploits_for_service)).scalars()
+                        for history in exploit_list:
+                            for exploit in [e for e in history.exploits if e.active]:
+                                job_obj = Job(status=JobExecutionStatus.QUEUED, timeout=datetime.fromtimestamp(self._ctf.get_next_tick_start()),
+                                              exploit=exploit)
                                 session.add(job_obj)
 
                                 session.add_all([Execution(job=job_obj, target=t,

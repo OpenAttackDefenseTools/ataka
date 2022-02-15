@@ -14,7 +14,7 @@ services:
     networks:
       - ataka
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_USERID: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
 
   postgres:
@@ -25,7 +25,7 @@ services:
     networks:
       - ataka
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_USERID: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
 
   adminer:
@@ -40,9 +40,13 @@ services:
 
   web:
     image: cyberwehr/ataka-web
+    user: $USERID
     build:
       context: ./
       dockerfile: ataka/web/Dockerfile
+    volumes:
+      - ${DATA_STORE}/shared:/data/shared:rw
+      - ${DATA_STORE}/exploits:/data/exploits:rw
     ports:
       - "0.0.0.0:80:5000"
     depends_on:
@@ -56,13 +60,19 @@ services:
 
   executor:
     image: cyberwehr/ataka-executor
+    user: $USERID
     build:
       context: ./
       dockerfile: ataka/executor/Dockerfile
+    volumes:
+      - /var/run/docker.sock:/run/docker.sock:rw
+      - ${DATA_STORE}/shared:/data/shared:rw
+      - ${DATA_STORE}/exploits:/data/exploits:rw
+      - ${DATA_STORE}/persist:/data/persist:rw
     depends_on:
       - postgres
       - rabbitmq
-    hostname: ataka-web
+    hostname: ataka-executor
     networks:
       - ataka
     env_file:
@@ -70,11 +80,13 @@ services:
 
   ctfcode:
     image: cyberwehr/ataka-ctfcode
+    user: $USERID
     build:
       context: ./
       dockerfile: ataka/ctfcode/Dockerfile
     volumes:
-      - ./ataka/ctfconfig:/home/ataka/ataka/ctfconfig:ro
+      - ./ataka/ctfconfig:/ataka/ctfconfig:ro
+      - ${DATA_STORE}/shared:/data/shared:rw
     depends_on:
       - postgres
       - rabbitmq
@@ -86,6 +98,7 @@ services:
 
   cli:
     image: cyberwehr/ataka-cli
+    user: $USERID
     build:
       context: ./
       dockerfile: ataka/cli/Dockerfile

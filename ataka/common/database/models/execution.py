@@ -14,7 +14,6 @@ class Execution(Base, JsonBase):
     status = Column(Enum(JobExecutionStatus))
     stdout = Column(UnicodeText)
     stderr = Column(UnicodeText)
-    return_code = Column(Integer)
 
     job = relationship("Job", back_populates="executions")
     target = relationship("Target")
