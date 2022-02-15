@@ -28,12 +28,13 @@ class TargetJobGenerator:
                 for job in future_jobs:
                     await job_queue.send_message(JobMessage(action=JobAction.CANCEL, job_id=job.id))
 
-                while True:
-                    print("New tick")
-                    services = self._ctf.get_services()
-                    all_targets = self._ctf.get_targets()
-                    round_time = self._ctf.get_round_time()
+            while True:
+                print("New tick")
+                services = self._ctf.get_services()
+                all_targets = self._ctf.get_targets()
+                round_time = self._ctf.get_round_time()
 
+                async with database.get_session() as session:
                     next_version = await session.execute(Target.version_seq)
 
                     job_list = []
@@ -52,7 +53,6 @@ class TargetJobGenerator:
                             .options(selectinload(Exploit.versions))
                         exploit_list = (await session.execute(get_latest_exploit)).scalars()
                         for exploit in exploit_list:
-                            print(f" versions {exploit.versions}")
                             for exploit_version in exploit.versions:
                                 if not exploit_version.active or exploit_version.status != ExploitStatus.READY:
                                     continue
@@ -71,8 +71,8 @@ class TargetJobGenerator:
                     for job in job_list:
                         await job_queue.send_message(JobMessage(action=JobAction.QUEUE, job_id=job.id))
 
-                    # sleep until next tick
-                    next_tick = self._ctf.get_next_tick_start()
-                    diff = next_tick - time.time()
-                    if diff > 0:
-                        await sleep(diff)
+                # sleep until next tick
+                next_tick = self._ctf.get_next_tick_start()
+                diff = next_tick - time.time()
+                if diff > 0:
+                    await sleep(diff)
