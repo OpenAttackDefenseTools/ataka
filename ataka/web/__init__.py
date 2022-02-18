@@ -131,6 +131,14 @@ async def all_flags():
     return ctf_config["services"]
 
 
+@app.get("/api/init")
+async def get_init_data():
+    print("fuck me", ctf_config)
+    return {
+        "ctf_config": ctf_config,
+    }
+
+
 @app.post("/api/flag/submit")
 async def submit_flag(submission: FlagSubmission, session: Session = Depends(get_session),
                       channel=Depends(get_channel)):
