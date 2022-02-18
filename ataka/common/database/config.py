@@ -13,9 +13,9 @@ Base = declarative_base()
 
 
 class JsonBase:
-    def to_json(self):
-        return json.dumps({c.name: self.__dict__[c.name] if c.name in self.__dict__ else None for c in self.__table__.columns})
+    def to_dict(self):
+        return {c.name: self.__dict__[c.name] if c.name in self.__dict__ else None for c in self.__table__.columns}
 
     @classmethod
-    def from_json(cls, string):
-        return cls(**json.loads(string))
+    def from_dict(cls, dict):
+        return cls(**dict)

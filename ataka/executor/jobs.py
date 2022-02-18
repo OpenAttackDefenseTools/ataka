@@ -38,13 +38,9 @@ class Jobs:
                         self._jobs += [asyncio.create_task(self.run_job(job_message.job_id))]
 
     async def run_job(self, job_id: int):
-        print("Running the job")
         job = await self.fetch_job_from_database(job_id)
         if job is None:
             return
-
-        print("got the job from the database")
-        print(f"{job=}")
 
         exploit = job.exploit
 
@@ -72,19 +68,15 @@ class Jobs:
                                                                                 }
                                                                             })
             await container_ref.start()
-            print("hi")
         except DockerError as e:
             print(e)
             raise e
 
-        print("starting the jobs")
 
         execute_tasks = [self.docker_execute(container_ref, e) for e in job.executions]
-        print("hoe")
 
         # Execute all the exploits
         results = await asyncio.gather(*execute_tasks)
-        print(f"yo {results=}")
 
         try:
             os.rmdir(persist_dir)

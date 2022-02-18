@@ -15,4 +15,4 @@ COPY ataka/web/requirements.txt /ataka/web/
 RUN pip install --no-cache-dir -r /ataka/web/requirements.txt
 COPY ataka/web /ataka/web
 
-CMD [ "bash", "/ataka/common/delayed_start.sh", "--", "python", "-m", "ataka.web" ]
+CMD [ "bash", "/ataka/common/delayed_start.sh", "--", "python", "-m", "uvicorn", "--host", "0.0.0.0", "ataka.web:app"]
