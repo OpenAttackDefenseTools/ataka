@@ -47,12 +47,31 @@ services:
     volumes:
       - ${DATA_STORE}/shared:/data/shared:rw
       - ${DATA_STORE}/exploits:/data/exploits:rw
+      - /media/manuel/data/priv/hack/_ecsc22/ataka/ataka/web:/ataka/web
     ports:
-      - "0.0.0.0:80:8000"
+      - "0.0.0.0:8000:8000"
     depends_on:
       - postgres
       - rabbitmq
     hostname: ataka-web
+    networks:
+      - ataka
+    env_file:
+      - .env
+
+  ui:
+    image: cyberwehr/ataka-ui
+    user: $USERID
+    build:
+      context: ./
+      dockerfile: ataka/ui/Dockerfile
+    volumes:
+      - /media/manuel/data/priv/hack/_ecsc22/ataka/ataka/ui:/ataka/ui
+    ports:
+      - "0.0.0.0:80:8080"
+    depends_on:
+      - web
+    hostname: ataka-ui
     networks:
       - ataka
     env_file:
