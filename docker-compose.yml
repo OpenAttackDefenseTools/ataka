@@ -48,7 +48,7 @@ services:
       - ${DATA_STORE}/shared:/data/shared:rw
       - ${DATA_STORE}/exploits:/data/exploits:rw
     ports:
-      - "0.0.0.0:80:5000"
+      - "0.0.0.0:80:8000"
     depends_on:
       - postgres
       - rabbitmq
