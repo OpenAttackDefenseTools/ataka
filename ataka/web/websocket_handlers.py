@@ -18,7 +18,7 @@ async def listen_flags(websocket: WebSocket, channel):
     flag_notify = await FlagNotifyQueue.get(channel)
 
     async for message in flag_notify.wait_for_messages():
-        await websocket.send_json(message.to_bytes().decode())
+        await websocket.send_json({"type": "flag", "body": message.to_bytes().decode()})
 
 
 async def listen_control_messages(websocket: WebSocket, channel):
