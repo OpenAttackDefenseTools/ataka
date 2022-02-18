@@ -18,30 +18,35 @@ app = FastAPI()
 
 ctf_config = None
 ctf_config_task = None
+global_channel = None
+flag_notify_queue = None
+control_queue = None
 
 
 async def listen_for_ctf_config():
-    async with await queue.get_channel() as channel:
-        control_queue = await ControlQueue.get(channel)
+    async def wait_for_updates():
+        global ctf_config
+        async for message in control_queue.wait_for_messages():
+            match message.action:
+                case ControlAction.CTF_CONFIG_UPDATE:
+                    ctf_config = message.extra
 
-        async def wait_for_updates():
-            global ctf_config
-            async for message in control_queue.wait_for_messages():
-                match message.action:
-                    case ControlAction.CTF_CONFIG_UPDATE:
-                        ctf_config = message.extra
+    wait_task = asyncio.create_task(wait_for_updates())
 
-        wait_task = asyncio.create_task(wait_for_updates())
+    await control_queue.send_message(ControlMessage(action=ControlAction.GET_CTF_CONFIG))
 
-        await control_queue.send_message(ControlMessage(action=ControlAction.GET_CTF_CONFIG))
-
-        await wait_task
+    await wait_task
 
 
 @app.on_event("startup")
 async def startup_event():
     await queue.connect()
     await database.connect()
+
+    global global_channel, flag_notify_queue, control_queue
+    global_channel = await queue.get_channel()
+    flag_notify_queue = await FlagNotifyQueue.get(global_channel)
+    control_queue = await ControlQueue.get(global_channel)
 
     global ctf_config_task
     ctf_config_task = asyncio.create_task(listen_for_ctf_config())
@@ -58,9 +63,8 @@ async def get_session():
         yield session
 
 
-async def get_channel():
-    async with await queue.get_channel() as channel:
-        yield channel
+def get_channel():
+    return global_channel
 
 
 @app.get("/api/targets")
@@ -128,15 +132,16 @@ async def submit_flag(submission: FlagSubmission, session: Session = Depends(get
     results = []
 
     async def listen_for_responses():
-        flag_notify_queue = await FlagNotifyQueue.get(channel)
         try:
             async for message in flag_notify_queue.wait_for_messages():
+                print(f"got message {message=}")
                 if message.manual_id == manual_id:
                     results.append(message.flag_id)
         except CancelledError:
             pass
 
     task = asyncio.create_task(listen_for_responses())
+    print("waiting....")
 
     message = OutputMessage(manual_id=manual_id, execution_id=None, stdout=True, output=submission.flags)
     output_queue = await OutputQueue.get(channel)
@@ -145,7 +150,14 @@ async def submit_flag(submission: FlagSubmission, session: Session = Depends(get
     try:
         await asyncio.wait_for(task, 3)
     except TimeoutError:
+        print("Timeouterror")
         pass
+
+    if len(results) == 0:
+        print("no results")
+        return []
+
+    print(results)
 
     get_result_flags = select(Flag).where(Flag.id.in_(results))
     flags = (await session.execute(get_result_flags)).scalars()
