@@ -1,10 +1,12 @@
+import asyncio
+
 from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect
 from sqlalchemy.future import select
 from sqlalchemy.orm import Session
 
 from ataka.common import queue, database
 from ataka.common.database.models import Job, Target
-from ataka.common.queue import ControlQueue
+from ataka.common.queue import ControlQueue, FlagNotifyQueue
 from ataka.web.schemas import FlagSubmission
 
 app = FastAPI()
@@ -83,17 +85,27 @@ async def all_flags(session: Session = Depends(get_session)):
 
 @app.post("/api/flag/submit")
 async def submit_flag(submission: FlagSubmission, session: Session = Depends(get_session)):
-    return [{"flag": flag, "success": True, "status": "valid"} for flag in submission.flags.split("\n") if len(flag) > 0]
+    return [{"flag": flag, "success": True, "status": "valid"} for flag in submission.flags.split("\n") if
+            len(flag) > 0]
 
 
-@app.websocket("/queue")
+@app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, channel=Depends(get_channel)):
     await websocket.accept()
 
-    try:
+    async def listen_flags():
+        flag_notify = await FlagNotifyQueue.get(channel)
+
+        async for message in flag_notify.wait_for_messages():
+            await websocket.send_json(message.to_bytes().decode())
+
+    async def listen_control_messages():
         control_queue = await ControlQueue.get(channel)
 
         async for message in control_queue.wait_for_messages():
             await websocket.send_text(message.to_bytes().decode())
+
+    try:
+        await asyncio.gather([listen_flags(), listen_control_messages()])
     except WebSocketDisconnect:
         print("disconnected")
