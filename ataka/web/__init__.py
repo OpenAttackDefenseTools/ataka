@@ -1,21 +1,50 @@
 import asyncio
+from asyncio import CancelledError
 
 from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect
 from sqlalchemy.future import select
 from sqlalchemy.orm import Session
+from websockets.exceptions import ConnectionClosedOK
 
 from ataka.common import queue, database
-from ataka.common.database.models import Job, Target
-from ataka.common.queue import ControlQueue, FlagNotifyQueue
+from ataka.common.database.models import Job, Target, Flag
+from ataka.common.queue import FlagNotifyQueue, ControlQueue, ControlAction, ControlMessage
+from ataka.common.queue.output import OutputMessage, OutputQueue
 from ataka.web.schemas import FlagSubmission
+from ataka.web.websocket_handlers import handle_incoming, handle_websocket_connection
 
 app = FastAPI()
+
+
+ctf_config = None
+ctf_config_task = None
+
+
+async def listen_for_ctf_config():
+    async with await queue.get_channel() as channel:
+        control_queue = await ControlQueue.get(channel)
+
+        async def wait_for_updates():
+            global ctf_config
+            async for message in control_queue.wait_for_messages():
+                match message.action:
+                    case ControlAction.CTF_CONFIG_UPDATE:
+                        ctf_config = message.extra
+
+        wait_task = asyncio.create_task(wait_for_updates())
+
+        await control_queue.send_message(ControlMessage(action=ControlAction.GET_CTF_CONFIG))
+
+        await wait_task
 
 
 @app.on_event("startup")
 async def startup_event():
     await queue.connect()
     await database.connect()
+
+    global ctf_config_task
+    ctf_config_task = asyncio.create_task(listen_for_ctf_config())
 
 
 @app.on_event("shutdown")
@@ -80,32 +109,57 @@ async def get_job(job_id, session: Session = Depends(get_session)):
 
 @app.get("/api/flags")
 async def all_flags(session: Session = Depends(get_session)):
+    # TODO
     return []
 
 
+@app.get("/api/services")
+async def all_flags():
+    global ctf_config
+    if ctf_config is None:
+        return []
+    return ctf_config["services"]
+
+
 @app.post("/api/flag/submit")
-async def submit_flag(submission: FlagSubmission, session: Session = Depends(get_session)):
-    return [{"flag": flag, "success": True, "status": "valid"} for flag in submission.flags.split("\n") if
-            len(flag) > 0]
+async def submit_flag(submission: FlagSubmission, session: Session = Depends(get_session), channel=Depends(get_channel)):
+    manual_id = 0
+
+    results = []
+
+    async def listen_for_responses():
+        flag_notify_queue = await FlagNotifyQueue.get(channel)
+        try:
+            async for message in flag_notify_queue.wait_for_messages():
+                if message.manual_id == manual_id:
+                    results.append(message.flag_id)
+        except CancelledError:
+            pass
+
+    task = asyncio.create_task(listen_for_responses())
+
+    message = OutputMessage(manual_id=manual_id, execution_id=None, stdout=True, output=submission.flags)
+    output_queue = await OutputQueue.get(channel)
+    await output_queue.send_message(message)
+
+    try:
+        await asyncio.wait_for(task, 3)
+    except TimeoutError:
+        pass
+
+    get_result_flags = select(Flag).where(Flag.id.in_(results))
+    flags = (await session.execute(get_result_flags)).scalars()
+
+    return [x.to_dict() for x in flags]
 
 
-@app.websocket("/ws")
+@app.websocket("/api/ws")
 async def websocket_endpoint(websocket: WebSocket, channel=Depends(get_channel)):
     await websocket.accept()
 
-    async def listen_flags():
-        flag_notify = await FlagNotifyQueue.get(channel)
-
-        async for message in flag_notify.wait_for_messages():
-            await websocket.send_json(message.to_bytes().decode())
-
-    async def listen_control_messages():
-        control_queue = await ControlQueue.get(channel)
-
-        async for message in control_queue.wait_for_messages():
-            await websocket.send_text(message.to_bytes().decode())
-
     try:
-        await asyncio.gather([listen_flags(), listen_control_messages()])
+        await handle_websocket_connection(websocket, channel)
     except WebSocketDisconnect:
-        print("disconnected")
+        pass
+    except ConnectionClosedOK:
+        pass
