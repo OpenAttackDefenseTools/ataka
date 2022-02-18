@@ -5,12 +5,15 @@ from ataka.common.queue import ControlQueue, FlagNotifyQueue, ControlAction
 
 
 def handle_websocket_connection(websocket: WebSocket, channel):
-    return asyncio.gather(
-        listen_flags(websocket, channel),
-        listen_control_messages(websocket, channel),
-        provide_heartbeat(websocket),
-        handle_incoming(websocket),
-    )
+    try:
+        return asyncio.gather(
+            listen_flags(websocket, channel),
+            listen_control_messages(websocket, channel),
+            provide_heartbeat(websocket),
+            handle_incoming(websocket),
+        )
+    except:
+        pass
 
 
 async def listen_flags(websocket: WebSocket, channel):
@@ -18,7 +21,7 @@ async def listen_flags(websocket: WebSocket, channel):
     flag_notify = await FlagNotifyQueue.get(channel)
 
     async for message in flag_notify.wait_for_messages():
-        await websocket.send_json({"type": "flag", "body": message.to_bytes().decode()})
+        await websocket.send_json({"type": "flag", "body": message.to_dict()})
 
 
 async def listen_control_messages(websocket: WebSocket, channel):
@@ -30,9 +33,25 @@ async def listen_control_messages(websocket: WebSocket, channel):
 
 
 async def provide_heartbeat(websocket: WebSocket):
-    while True:
-        await asyncio.sleep(5)
-        await websocket.send_json({"type": "heartbeat", "body": {}})
+    from ataka.common.database import get_session
+    from ataka.common.database.models import Exploit
+    from sqlalchemy import select
+
+    async with get_session() as session:
+        get_exploit = select(Exploit).limit(1)
+        exploit = (await session.execute(get_exploit)).scalars().first().to_dict()
+        exploit["timestamp"] = exploit["timestamp"].isoformat()
+
+    try:
+        while True:
+            exploit["exploit_history_id"] += 1
+            await asyncio.sleep(5)
+            await websocket.send_json({"type": "heartbeat", "body": {}})
+            print("sending exploit", exploit)
+            await websocket.send_json({"type": "exploit", "body": exploit})
+    except Exception as e:
+        print(e)
+        pass
 
 
 async def handle_incoming(websocket: WebSocket):
@@ -57,5 +76,4 @@ def websocket_handler(func):
 
 @websocket_handler
 def heartbeat(_):
-    print("gotten heartbeat")
     pass
