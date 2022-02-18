@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 
 from .queue import WorkQueue, Message, PubSubQueue
-from ..database.models import FlagStatus
 
 
 @dataclass
@@ -11,8 +10,10 @@ class FlagMessage(Message):
 
 
 @dataclass
-class FlagNotifyMessage(FlagMessage):
-    status: FlagStatus
+class FlagNotifyMessage(Message):
+    flag_id: int
+    manual_id: int
+    execution_id: int
 
 
 class FlagQueue(WorkQueue):

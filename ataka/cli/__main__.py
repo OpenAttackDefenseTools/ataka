@@ -8,6 +8,7 @@ from pamqp.specification import Basic
 from ataka.common import queue, database
 from ataka.common.database.models import Flag, FlagStatus
 from ataka.common.queue import get_channel, ControlQueue, ControlMessage, FlagQueue, FlagMessage, ControlAction
+from ataka.common.queue.output import OutputQueue
 
 
 def coro(f):
@@ -18,6 +19,21 @@ def coro(f):
 
 
 app = typer.Typer()
+
+
+@app.command()
+@coro
+async def log():
+    await queue.connect()
+    async with await queue.get_channel() as channel:
+        output_queue = await OutputQueue.get(channel)
+        async for message in output_queue.wait_for_messages():
+            tag = 'MANUAL' if message.manual_id is not None else str(message.execution_id)
+            tag = tag.rjust(10)
+            error_tag = "ERR" if not message.stdout else "   "
+            output = '\n'.join([f"{tag} {error_tag} {line}" for line in message.output.strip().split("\n")])
+            print(output)
+    await queue.disconnect()
 
 
 @app.command()

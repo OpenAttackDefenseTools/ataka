@@ -12,6 +12,7 @@ from ataka.common import database
 from ataka.common.database.models import Job, Execution
 from ataka.common.queue import get_channel, JobQueue, JobAction
 from .localdata import *
+from ..common.queue.output import OutputQueue, OutputMessage
 
 
 class BuildError(Exception):
@@ -22,7 +23,6 @@ class Jobs:
     def __init__(self, docker, exploits):
         self._docker = docker
         self._exploits = exploits
-        self._data_store = os.environ["DATA_STORE"]
         self._jobs = []
 
     async def poll_and_run_jobs(self):
@@ -35,10 +35,20 @@ class Jobs:
                         # TODO: do
                         pass
                     case JobAction.QUEUE:
-                        self._jobs += [asyncio.create_task(self.run_job(job_message.job_id))]
+                        job_execution = JobExecution(self._docker, self._exploits, channel, job_message.job_id)
+                        self._jobs += [asyncio.create_task(job_execution.run())]
 
-    async def run_job(self, job_id: int):
-        job = await self.fetch_job_from_database(job_id)
+
+class JobExecution:
+    def __init__(self, docker, exploits, channel, job_id: int):
+        self._docker = docker
+        self._exploits = exploits
+        self._channel = channel
+        self._job_id = job_id
+        self._data_store = os.environ["DATA_STORE"]
+
+    async def run(self):
+        job = await self.fetch_job_from_database()
         if job is None:
             return
 
@@ -52,7 +62,8 @@ class Jobs:
             container_ref = await self._docker.containers.create_or_replace(name=f"ataka-exploit-{exploit.file}",
                                                                             config={
                                                                                 "Image": exploit.docker_id,
-                                                                                "Cmd": ["sleep", str(math.floor(job.timeout - time.time()))],
+                                                                                "Cmd": ["sleep", str(math.floor(
+                                                                                    job.timeout - time.time()))],
                                                                                 "AttachStdin": False,
                                                                                 "AttachStdout": False,
                                                                                 "AttachStderr": False,
@@ -67,11 +78,11 @@ class Jobs:
                                                                                     }]
                                                                                 }
                                                                             })
+
             await container_ref.start()
-        except DockerError as e:
+        except (DockerError, Exception) as e:
             print(e)
             raise e
-
 
         execute_tasks = [self.docker_execute(container_ref, e) for e in job.executions]
 
@@ -83,15 +94,14 @@ class Jobs:
         except (FileNotFoundError, OSError):
             pass
 
-        print("hobo")
-        await self.submit_to_database(job_id, results)
+        await self.submit_to_database(results)
         # TODO: send to ctfconfig
 
-    async def fetch_job_from_database(self, job_id: int) -> Optional[LocalJob]:
+    async def fetch_job_from_database(self) -> Optional[LocalJob]:
         async with database.get_session() as session:
-            get_job = select(Job).where(Job.id == job_id)
+            get_job = select(Job).where(Job.id == self._job_id)
             job = (await session.execute(get_job)).scalar_one()
-            get_executions = select(Execution).where(Execution.job_id == job_id) \
+            get_executions = select(Execution).where(Execution.job_id == self._job_id) \
                 .options(selectinload(Execution.target))
             executions = (await session.execute(get_executions)).scalars()
 
@@ -117,23 +127,24 @@ class Jobs:
             local_executions = []
             for e in executions:
                 e.status = JobExecutionStatus.RUNNING
-                local_executions += [LocalExecution(e.id, exploit, LocalTarget(e.target.ip, e.target.extra), JobExecutionStatus.RUNNING)]
+                local_executions += [
+                    LocalExecution(e.id, exploit, LocalTarget(e.target.ip, e.target.extra), JobExecutionStatus.RUNNING)]
 
             await session.commit()
 
             # Convert data to local for usage without database
             return LocalJob(exploit, job.timeout.timestamp(), local_executions)
 
-    async def submit_to_database(self, job_id: int, results: [LocalExecution]):
+    async def submit_to_database(self, results: [LocalExecution]):
         local_executions = {e.database_id: e for e in results}
 
         # submit results to database
         async with database.get_session() as session:
-            get_job = select(Job).where(Job.id == job_id)
+            get_job = select(Job).where(Job.id == self._job_id)
             job = (await session.execute(get_job)).scalar_one()
             job.status = LocalExploitStatus.FINISHED
 
-            get_executions = select(Execution).where(Execution.job_id == job_id) \
+            get_executions = select(Execution).where(Execution.job_id == self._job_id) \
                 .options(selectinload(Execution.target))
             executions = (await session.execute(get_executions)).scalars()
 
@@ -145,8 +156,7 @@ class Jobs:
 
             await session.commit()
 
-    @staticmethod
-    async def docker_execute(container_ref, execution: LocalExecution) -> LocalExecution:
+    async def docker_execute(self, container_ref, execution: LocalExecution) -> LocalExecution:
         async def exec_in_container_and_poll_output():
             try:
                 exec_ref = await container_ref.exec(cmd=execution.exploit.docker_cmd, tty=False, environment={
@@ -163,6 +173,8 @@ class Jobs:
             except DockerError as e:
                 yield 2, f"DOCKER EXECUTION ERROR: {e.message}"
 
+        output_queue = await OutputQueue.get(self._channel)
+
         async for (stream, output) in exec_in_container_and_poll_output():
             # collect output
             match stream:
@@ -171,7 +183,6 @@ class Jobs:
                 case 2:
                     execution.stderr += output
 
-            # TODO: stream to web ui
-            print(f"Got from stream {stream} output {output}")
+            await output_queue.send_message(OutputMessage(None, execution.database_id, stream == 1, output))
         execution.status = JobExecutionStatus.FINISHED
         return execution
