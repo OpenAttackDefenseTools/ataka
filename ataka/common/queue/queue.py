@@ -4,6 +4,8 @@ from dataclasses import dataclass, asdict
 
 import aio_pika
 
+from ataka.common.queue.multiplexed_queue import MultiplexedQueue
+
 
 @dataclass
 class Message:
@@ -45,8 +47,8 @@ class Queue(ABC):
     async def wait_for_messages(self, **kwargs):
         async with (await self._get_queue()).iterator(**kwargs) as queue_iter:
             async for message in queue_iter:
-                await message.ack()
-                yield self.message_type.from_bytes(message.body)
+                async with message.process(ignore_processed=True):
+                    yield self.message_type.from_bytes(message.body)
 
     async def clear(self):
         queue = await self._get_queue()
@@ -64,7 +66,7 @@ class PubSubQueue(Queue):
 
     async def _get_queue(self) -> aio_pika.Queue:
         if self._queue is None:
-            self._queue = await self._channel.declare_queue(exclusive=True)
+            self._queue = MultiplexedQueue(await self._channel.declare_queue(exclusive=True))
             await self._queue.bind(await self._get_exchange())
         return self._queue
 

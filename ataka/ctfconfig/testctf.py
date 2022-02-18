@@ -5,7 +5,9 @@ from ataka.common.database.models import FlagStatus
 # Config for framework
 ROUND_TIME = 10
 
-FLAG_REGEX = r"[A-Z0-9]{31}="
+# format: regex, group where group 0 means the whole regex
+FLAG_REGEX = r"[A-Z0-9]{31}=", 0
+FLAG_REGEX = r"(?:[0-9]{1,3}\.){3}[0-9]{1,3}", 0
 
 FLAG_BATCHSIZE = 100
 
