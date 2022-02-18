@@ -1,7 +1,7 @@
 import asyncio
+import random
 import re
 from asyncio import CancelledError
-import random
 
 from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect
 from sqlalchemy.future import select
@@ -17,12 +17,11 @@ from ataka.web.websocket_handlers import handle_incoming, handle_websocket_conne
 
 app = FastAPI()
 
-
 ctf_config = None
 ctf_config_task = None
 global_channel = None
-flag_notify_queue = None
-control_queue = None
+flag_notify_queue: FlagNotifyQueue = None
+control_queue: ControlQueue = None
 
 
 async def listen_for_ctf_config():
@@ -32,12 +31,14 @@ async def listen_for_ctf_config():
             match message.action:
                 case ControlAction.CTF_CONFIG_UPDATE:
                     ctf_config = message.extra
+                    print("Reloaded config")
 
-    wait_task = asyncio.create_task(wait_for_updates())
+    async def ask_for_updates_repeated():
+        while ctf_config is None:
+            await control_queue.send_message(ControlMessage(action=ControlAction.GET_CTF_CONFIG))
+            await asyncio.sleep(0.5)
 
-    await control_queue.send_message(ControlMessage(action=ControlAction.GET_CTF_CONFIG))
-
-    await wait_task
+    await asyncio.gather(wait_for_updates(), ask_for_updates_repeated())
 
 
 @app.on_event("startup")
@@ -47,6 +48,7 @@ async def startup_event():
 
     global global_channel, flag_notify_queue, control_queue
     global_channel = await queue.get_channel()
+    print(global_channel)
     flag_notify_queue = await FlagNotifyQueue.get(global_channel)
     control_queue = await ControlQueue.get(global_channel)
 
@@ -56,6 +58,8 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
+    await global_channel.close()
+
     await queue.disconnect()
     await database.disconnect()
 
@@ -128,10 +132,11 @@ async def all_flags():
 
 
 @app.post("/api/flag/submit")
-async def submit_flag(submission: FlagSubmission, session: Session = Depends(get_session), channel=Depends(get_channel)):
+async def submit_flag(submission: FlagSubmission, session: Session = Depends(get_session),
+                      channel=Depends(get_channel)):
     expected_flags = len(re.findall(ctf_config["flag_regex"], submission.flags))
 
-    manual_id = random.randint(0, 2**31)
+    manual_id = random.randint(0, 2 ** 31)
 
     results = []
 
