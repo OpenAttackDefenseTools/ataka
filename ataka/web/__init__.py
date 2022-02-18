@@ -10,55 +10,27 @@ from websockets.exceptions import ConnectionClosedOK
 
 from ataka.common import queue, database
 from ataka.common.database.models import Job, Target, Flag
-from ataka.common.queue import FlagNotifyQueue, ControlQueue, ControlAction, ControlMessage
 from ataka.common.queue.output import OutputMessage, OutputQueue
 from ataka.web.schemas import FlagSubmission
+from ataka.web.state import GlobalState
 from ataka.web.websocket_handlers import handle_incoming, handle_websocket_connection
 
 app = FastAPI()
-
-ctf_config = None
-ctf_config_task = None
-global_channel = None
-flag_notify_queue: FlagNotifyQueue = None
-control_queue: ControlQueue = None
-
-
-async def listen_for_ctf_config():
-    async def wait_for_updates():
-        global ctf_config
-        async for message in control_queue.wait_for_messages():
-            match message.action:
-                case ControlAction.CTF_CONFIG_UPDATE:
-                    ctf_config = message.extra
-                    print("Reloaded config")
-
-    async def ask_for_updates_repeated():
-        while ctf_config is None:
-            await control_queue.send_message(ControlMessage(action=ControlAction.GET_CTF_CONFIG))
-            await asyncio.sleep(0.5)
-
-    await asyncio.gather(wait_for_updates(), ask_for_updates_repeated())
+state: GlobalState
 
 
 @app.on_event("startup")
 async def startup_event():
+    global state
     await queue.connect()
     await database.connect()
 
-    global global_channel, flag_notify_queue, control_queue
-    global_channel = await queue.get_channel()
-    print(global_channel)
-    flag_notify_queue = await FlagNotifyQueue.get(global_channel)
-    control_queue = await ControlQueue.get(global_channel)
-
-    global ctf_config_task
-    ctf_config_task = asyncio.create_task(listen_for_ctf_config())
+    state = await GlobalState.get()
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    await global_channel.close()
+    await state.close()
 
     await queue.disconnect()
     await database.disconnect()
@@ -70,7 +42,7 @@ async def get_session():
 
 
 def get_channel():
-    return global_channel
+    return state.global_channel
 
 
 @app.get("/api/targets")
@@ -118,31 +90,30 @@ async def get_job(job_id, session: Session = Depends(get_session)):
 
 
 @app.get("/api/flags")
-async def all_flags(session: Session = Depends(get_session)):
+async def all_flags():
     # TODO
     return []
 
 
 @app.get("/api/services")
 async def all_flags():
-    global ctf_config
-    if ctf_config is None:
+    if state.ctf_config is None:
         return []
-    return ctf_config["services"]
+    return state.ctf_config["services"]
 
 
 @app.get("/api/init")
 async def get_init_data():
-    print("fuck me", ctf_config)
     return {
-        "ctf_config": ctf_config,
+        "ctf_config": state.ctf_config,
+        "exploits": state.exploits,
     }
 
 
 @app.post("/api/flag/submit")
 async def submit_flag(submission: FlagSubmission, session: Session = Depends(get_session),
                       channel=Depends(get_channel)):
-    expected_flags = len(re.findall(ctf_config["flag_regex"], submission.flags))
+    expected_flags = len(re.findall(state.ctf_config["flag_regex"], submission.flags))
 
     manual_id = random.randint(0, 2 ** 31)
 
@@ -150,7 +121,7 @@ async def submit_flag(submission: FlagSubmission, session: Session = Depends(get
 
     async def listen_for_responses():
         try:
-            async for message in flag_notify_queue.wait_for_messages():
+            async for message in state.flag_notify_queue.wait_for_messages():
                 if message.manual_id == manual_id:
                     results.append(message.flag_id)
 
@@ -161,9 +132,9 @@ async def submit_flag(submission: FlagSubmission, session: Session = Depends(get
 
     task = asyncio.create_task(listen_for_responses())
 
-    message = OutputMessage(manual_id=manual_id, execution_id=None, stdout=True, output=submission.flags)
+    output_message = OutputMessage(manual_id=manual_id, execution_id=None, stdout=True, output=submission.flags)
     output_queue = await OutputQueue.get(channel)
-    await output_queue.send_message(message)
+    await output_queue.send_message(output_message)
 
     try:
         await asyncio.wait_for(task, 3)

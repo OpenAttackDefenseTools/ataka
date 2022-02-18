@@ -5,6 +5,7 @@ import aio_pika
 from aio_pika import RobustConnection
 
 from .control import *
+from .exploit import *
 from .flag import *
 from .job import *
 
