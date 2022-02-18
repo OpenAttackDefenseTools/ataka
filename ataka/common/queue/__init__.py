@@ -2,12 +2,13 @@ import asyncio
 import os
 
 import aio_pika
+from aio_pika import RobustConnection
 
 from .control import *
 from .flag import *
 from .job import *
 
-connection = None
+connection: RobustConnection = None
 
 
 async def connect():
@@ -23,5 +24,4 @@ async def disconnect():
 
 
 async def get_channel():
-    global connection
     return await connection.channel()

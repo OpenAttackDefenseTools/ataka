@@ -1,6 +1,5 @@
 import asyncio
 
-
 from fastapi import WebSocket
 from ataka.common.queue import ControlQueue, FlagNotifyQueue, ControlAction
 
