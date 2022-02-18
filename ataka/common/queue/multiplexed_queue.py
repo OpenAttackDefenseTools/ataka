@@ -23,8 +23,8 @@ class MultiplexedQueue(Queue):
             consumer_tag=None,
             timeout=None,
     ) -> ConsumerTag:
-        if self._consumer_tag is not None and self._consumer_tag is not consumer_tag:
-            raise ValueError("Consumer tags of subsequent calls do not match")
+        if self._consumer_tag is None:
+            self._consumer_tag = consumer_tag
 
         self._consumers += 1
 

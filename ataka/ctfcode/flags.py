@@ -6,7 +6,7 @@ from sqlalchemy.future import select
 from ataka.common import database
 from ataka.common.database.models import Flag, FlagStatus
 from .ctf import CTF
-from ..common.queue import FlagQueue, get_channel, FlagMessage
+from ..common.queue import FlagQueue, get_channel, FlagMessage, FlagNotifyQueue, FlagNotifyMessage
 from ..common.queue.output import OutputQueue
 
 
@@ -17,6 +17,7 @@ class Flags:
     async def poll_and_submit_flags(self):
         async with await get_channel() as channel:
             flag_queue = await FlagQueue.get(channel)
+            flag_notify_queue = await FlagNotifyQueue.get(channel)
             async with database.get_session() as session:
                 while True:
                     batchsize = self._ctf.get_flag_batchsize()
@@ -34,6 +35,7 @@ class Flags:
 
                             get_flag = select(Flag).where(Flag.id == flag_id)
                             flag_obj = (await session.execute(get_flag)).scalar_one()
+                            dupe_list = []
                             # if there is already such a flag
                             # do not submit, but put in DUPLICATE in database
                             if duplicate is None:
@@ -41,8 +43,12 @@ class Flags:
                                 submitlist += [flag_obj]
                             else:
                                 flag_obj.status = FlagStatus.DUPLICATE
+                                dupe_list += [flag_obj]
 
                             await session.commit()
+
+                            for flag in dupe_list:
+                                await flag_notify_queue.send_message(FlagNotifyMessage(flag.id, 0 if flag.execution_id is None else None, flag.execution_id))
 
                             if len(submitlist) >= batchsize:
                                 break
@@ -56,6 +62,10 @@ class Flags:
                         for flag, status in zip(submitlist, statuslist):
                             flag.status = status
                         await session.commit()
+
+                        for flag in submitlist:
+                            await flag_notify_queue.send_message(FlagNotifyMessage(flag.id, 0 if flag.execution_id is None else None, flag.execution_id))
+
                         await sleep(ratelimit)
 
     async def poll_and_parse_output(self):
@@ -67,7 +77,7 @@ class Flags:
                     regex, group = self._ctf.get_flag_regex()
                     flags = []
                     for match in re.finditer(regex, message.output):
-                        if match.start(group) is -1 or match.end(group) is -1:
+                        if match.start(group) == -1 or match.end(group) == -1:
                             continue
 
                         flags += [Flag(flag=match.group(group), status=FlagStatus.UNKNOWN,
