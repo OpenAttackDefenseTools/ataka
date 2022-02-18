@@ -10,7 +10,10 @@ from ataka.common.queue.multiplexed_queue import MultiplexedQueue
 @dataclass
 class Message:
     def to_bytes(self) -> bytes:
-        return json.dumps(asdict(self)).encode()
+        return json.dumps(self.to_dict()).encode()
+
+    def to_dict(self):
+        return asdict(self)
 
     @classmethod
     def from_bytes(cls, body: bytes):
