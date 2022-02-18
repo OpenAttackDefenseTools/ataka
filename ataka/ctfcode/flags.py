@@ -1,3 +1,4 @@
+import re
 from asyncio import TimeoutError, sleep
 
 from sqlalchemy.future import select
@@ -5,7 +6,8 @@ from sqlalchemy.future import select
 from ataka.common import database
 from ataka.common.database.models import Flag, FlagStatus
 from .ctf import CTF
-from ..common.queue import FlagQueue, get_channel
+from ..common.queue import FlagQueue, get_channel, FlagMessage
+from ..common.queue.output import OutputQueue
 
 
 class Flags:
@@ -55,3 +57,29 @@ class Flags:
                             flag.status = status
                         await session.commit()
                         await sleep(ratelimit)
+
+    async def poll_and_parse_output(self):
+        async with await get_channel() as channel:
+            flag_queue = await FlagQueue.get(channel)
+            output_queue = await OutputQueue.get(channel)
+            async with database.get_session() as session:
+                async for message in output_queue.wait_for_messages():
+                    regex, group = self._ctf.get_flag_regex()
+                    flags = []
+                    for match in re.finditer(regex, message.output):
+                        if match.start(group) is -1 or match.end(group) is -1:
+                            continue
+
+                        flags += [Flag(flag=match.group(group), status=FlagStatus.UNKNOWN,
+                                       execution_id=message.execution_id if message.manual_id is None else None,
+                                       stdout=message.stdout, start=match.start(group), end=match.end(group))]
+
+                    if len(flags) == 0:
+                        continue
+
+                    session.add_all(flags)
+                    await session.commit()
+
+                    messages = [FlagMessage(flag_id=f.id, flag=f.flag) for f in flags]
+                    for message in messages:
+                        result = await flag_queue.send_message(message)
