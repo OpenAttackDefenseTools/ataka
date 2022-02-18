@@ -14,7 +14,7 @@ services:
     networks:
       - ataka
     environment:
-      RABBITMQ_DEFAULT_USERID: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
 
   postgres:
@@ -25,7 +25,7 @@ services:
     networks:
       - ataka
     environment:
-      POSTGRES_USERID: ${POSTGRES_USER}
+      POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
 
   adminer:
