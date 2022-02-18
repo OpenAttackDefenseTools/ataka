@@ -28,7 +28,7 @@ class CTF:
                                                                extra={
                                                                    "start_time": self.get_start_time(),
                                                                    "round_time": self.get_round_time(),
-                                                                   "flag_regex": self.get_flag_regex(),
+                                                                   "flag_regex": self.get_flag_regex()[0],
                                                                    "services": self.get_services(),
                                                                }))
 

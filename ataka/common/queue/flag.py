@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 from .queue import WorkQueue, Message, PubSubQueue
 
@@ -12,8 +13,8 @@ class FlagMessage(Message):
 @dataclass
 class FlagNotifyMessage(Message):
     flag_id: int
-    manual_id: int
-    execution_id: int
+    manual_id: Optional[int]
+    execution_id: Optional[int]
 
 
 class FlagQueue(WorkQueue):

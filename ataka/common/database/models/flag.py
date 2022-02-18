@@ -55,6 +55,7 @@ class Flag(Base, JsonBase):
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
 
     execution_id = Column(Integer, ForeignKey("executions.id"), index=True)
+    manual_id = Column(Integer)
     stdout = Column(Boolean)
     start = Column(Integer)
     end = Column(Integer)
