@@ -48,11 +48,11 @@ class Flags:
                             await session.commit()
 
                             for flag in dupe_list:
-                                await flag_notify_queue.send_message(FlagNotifyMessage(flag.id, 0 if flag.execution_id is None else None, flag.execution_id))
+                                await flag_notify_queue.send_message(FlagNotifyMessage(flag.id, flag.manual_id, flag.execution_id))
 
                             if len(submitlist) >= batchsize:
                                 break
-                    except TimeoutError:
+                    except TimeoutError as e:
                         pass
 
                     if len(submitlist) > 0:
@@ -64,7 +64,7 @@ class Flags:
                         await session.commit()
 
                         for flag in submitlist:
-                            await flag_notify_queue.send_message(FlagNotifyMessage(flag.id, 0 if flag.execution_id is None else None, flag.execution_id))
+                            await flag_notify_queue.send_message(FlagNotifyMessage(flag.id, flag.manual_id, flag.execution_id))
 
                         await sleep(ratelimit)
 
@@ -81,7 +81,7 @@ class Flags:
                             continue
 
                         flags += [Flag(flag=match.group(group), status=FlagStatus.UNKNOWN,
-                                       execution_id=message.execution_id if message.manual_id is None else None,
+                                       execution_id=message.execution_id, manual_id=message.manual_id,
                                        stdout=message.stdout, start=match.start(group), end=match.end(group))]
 
                     if len(flags) == 0:

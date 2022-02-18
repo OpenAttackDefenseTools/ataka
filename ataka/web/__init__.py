@@ -1,5 +1,7 @@
 import asyncio
+import re
 from asyncio import CancelledError
+import random
 
 from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect
 from sqlalchemy.future import select
@@ -127,21 +129,24 @@ async def all_flags():
 
 @app.post("/api/flag/submit")
 async def submit_flag(submission: FlagSubmission, session: Session = Depends(get_session), channel=Depends(get_channel)):
-    manual_id = 0
+    expected_flags = len(re.findall(ctf_config["flag_regex"], submission.flags))
+
+    manual_id = random.randint(0, 2**31)
 
     results = []
 
     async def listen_for_responses():
         try:
             async for message in flag_notify_queue.wait_for_messages():
-                print(f"got message {message=}")
                 if message.manual_id == manual_id:
                     results.append(message.flag_id)
+
+                    if len(results) == expected_flags:
+                        break
         except CancelledError:
             pass
 
     task = asyncio.create_task(listen_for_responses())
-    print("waiting....")
 
     message = OutputMessage(manual_id=manual_id, execution_id=None, stdout=True, output=submission.flags)
     output_queue = await OutputQueue.get(channel)
@@ -150,14 +155,10 @@ async def submit_flag(submission: FlagSubmission, session: Session = Depends(get
     try:
         await asyncio.wait_for(task, 3)
     except TimeoutError:
-        print("Timeouterror")
         pass
 
     if len(results) == 0:
-        print("no results")
         return []
-
-    print(results)
 
     get_result_flags = select(Flag).where(Flag.id.in_(results))
     flags = (await session.execute(get_result_flags)).scalars()
