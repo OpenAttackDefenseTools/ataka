@@ -13,7 +13,7 @@ class ControlAction(str, Enum):
 @dataclass
 class ControlMessage(Message):
     action: ControlAction
-    extra: dict = None
+    extra: dict | None = None
 
 
 class ControlQueue(PubSubQueue):

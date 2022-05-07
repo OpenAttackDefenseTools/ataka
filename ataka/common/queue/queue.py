@@ -20,6 +20,7 @@ class Message:
         return cls(**json.loads(body.decode()))
 
 
+# TODO: add proper generic type hints once python 3.11 is an option
 class Queue(ABC):
     queue_name: str
     message_type: type[Message]

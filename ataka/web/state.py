@@ -52,7 +52,7 @@ class GlobalState:
         async for message in self.exploit_queue.wait_for_messages():
             async with get_session() as session:
                 get_exploit = select(Exploit).where(Exploit.id == message.exploit_id)
-                exploit = (await session.execute(get_exploit)).scalars().first()
+                exploit = (await session.execute(get_exploit)).scalar_one()
 
             self.exploits[exploit.id] = exploit
             print("exploit change", message)

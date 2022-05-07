@@ -13,8 +13,8 @@ class FlagMessage(Message):
 @dataclass
 class FlagNotifyMessage(Message):
     flag_id: int
-    manual_id: Optional[int]
-    execution_id: Optional[int]
+    manual_id: int | None
+    execution_id: None | int
 
 
 class FlagQueue(WorkQueue):
