@@ -1,0 +1,6 @@
+*.pyc
+*.swp
+.idea/
+src/**/__pycache__/
+venv/
+**/.vagrant/
