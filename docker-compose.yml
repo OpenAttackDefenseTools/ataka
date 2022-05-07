@@ -1,0 +1,85 @@
+version: '3'
+
+#
+# Have a look at the .env file -> used for configuration
+#
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.9-management-alpine
+    ports:
+      - "0.0.0.0:15672:15672"
+    hostname: ataka-rabbitmq
+    networks:
+      - ataka
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+
+  postgres:
+    image: postgres:14-alpine
+    hostname: ataka-postgres
+    networks:
+      - ataka
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+  adminer:
+    image: adminer:latest
+    ports:
+      - "0.0.0.0:8080:8080"
+    hostname: ataka-adminer
+    networks:
+      - ataka
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+
+  web:
+    image: cyberwehr/ataka-web
+    build:
+      context: ./
+      dockerfile: ataka/web/Dockerfile
+    ports:
+      - "0.0.0.0:80:5000"
+    depends_on:
+      - postgres
+      - rabbitmq
+    hostname: ataka-web
+    networks:
+      - ataka
+    env_file:
+      - .env
+
+  executor:
+    image: cyberwehr/ataka-executor
+    build:
+      context: ./
+      dockerfile: ataka/executor/Dockerfile
+    depends_on:
+      - postgres
+      - rabbitmq
+    hostname: ataka-web
+    networks:
+      - ataka
+    env_file:
+      - .env
+
+  ctfcode:
+    image: cyberwehr/ataka-ctfcode
+    build:
+      context: ./
+      dockerfile: ataka/ctfcode/Dockerfile
+    volumes:
+      - ./ataka/ctfconfig:/home/ataka/ataka/ctfconfig:ro
+    depends_on:
+      - postgres
+      - rabbitmq
+    hostname: ataka-ctfcode
+    networks:
+      - ataka
+    env_file:
+      - .env
+
+networks:
+  ataka:
