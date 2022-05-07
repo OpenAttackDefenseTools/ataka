@@ -12,16 +12,19 @@ class CTF:
 
     async def watch_for_reload(self):
         async with await get_channel() as channel:
-            control_queue = await ControlQueue.get(channel)
+            try:
+                control_queue = await ControlQueue.get(channel)
 
-            async for control_message in control_queue.wait_for_messages():
-                match control_message.action:
-                    case ControlAction.RELOAD_CONFIG:
-                        self.reload()
-                        await self._send_ctf_config(control_queue)
+                async for control_message in control_queue.wait_for_messages():
+                    match control_message.action:
+                        case ControlAction.RELOAD_CONFIG:
+                            self.reload()
+                            await self._send_ctf_config(control_queue)
 
-                    case ControlAction.GET_CTF_CONFIG:
-                        await self._send_ctf_config(control_queue)
+                        case ControlAction.GET_CTF_CONFIG:
+                            await self._send_ctf_config(control_queue)
+            except Exception as e:
+                print(e)
 
     async def _send_ctf_config(self, control_queue):
         return await control_queue.send_message(ControlMessage(action=ControlAction.CTF_CONFIG_UPDATE,

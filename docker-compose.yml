@@ -45,11 +45,13 @@ services:
       context: ./
       dockerfile: ataka/web/Dockerfile
     volumes:
-      - ${DATA_STORE}/shared:/data/shared:rw
-      - ${DATA_STORE}/exploits:/data/exploits:rw
+      - ${DATA_STORE}/shared:/data/shared:rw,z
+      - ${DATA_STORE}/exploits:/data/exploits:rw,z
       - ./ataka/web:/ataka/web
     ports:
       - "0.0.0.0:8000:8000"
+    security_opt:
+      - label:disable
     depends_on:
       - postgres
       - rabbitmq
@@ -69,6 +71,8 @@ services:
       - ./ataka/ui:/ataka/ui
     ports:
       - "0.0.0.0:80:8080"
+    security_opt:
+      - label:disable
     depends_on:
       - web
     hostname: ataka-ui
@@ -76,6 +80,8 @@ services:
       - ataka
     env_file:
       - .env
+    stdin_open: true # docker run -i
+    tty: true        # docker run -t
 
   executor:
     image: cyberwehr/ataka-executor
@@ -85,9 +91,11 @@ services:
       dockerfile: ataka/executor/Dockerfile
     volumes:
       - /var/run/docker.sock:/run/docker.sock:rw
-      - ${DATA_STORE}/shared:/data/shared:rw
-      - ${DATA_STORE}/exploits:/data/exploits:rw
-      - ${DATA_STORE}/persist:/data/persist:rw
+      - ${DATA_STORE}/shared:/data/shared:rw,z
+      - ${DATA_STORE}/exploits:/data/exploits:rw,z
+      - ${DATA_STORE}/persist:/data/persist:rw,z
+    security_opt:
+      - label:disable
     depends_on:
       - postgres
       - rabbitmq
@@ -105,7 +113,9 @@ services:
       dockerfile: ataka/ctfcode/Dockerfile
     volumes:
       - ./ataka/ctfconfig:/ataka/ctfconfig:ro
-      - ${DATA_STORE}/shared:/data/shared:rw
+      - ${DATA_STORE}/shared:/data/shared:rw,z
+    security_opt:
+      - label:disable
     depends_on:
       - postgres
       - rabbitmq

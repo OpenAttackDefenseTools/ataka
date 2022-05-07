@@ -37,18 +37,18 @@ async def provide_heartbeat(websocket: WebSocket):
     from ataka.common.database.models import Exploit
     from sqlalchemy import select
 
-    async with get_session() as session:
-        get_exploit = select(Exploit).limit(1)
-        exploit = (await session.execute(get_exploit)).scalars().first().to_dict()
-        exploit["timestamp"] = exploit["timestamp"].isoformat()
+    #async with get_session() as session:
+    #    get_exploit = select(Exploit).limit(1)
+    #    exploit = (await session.execute(get_exploit)).scalars().first().to_dict()
+    #    exploit["timestamp"] = exploit["timestamp"].isoformat()
 
     try:
         while True:
-            exploit["exploit_history_id"] += 1
+            #exploit["exploit_history_id"] += 1
             await asyncio.sleep(5)
             await websocket.send_json({"type": "heartbeat", "body": {}})
-            print("sending exploit", exploit)
-            await websocket.send_json({"type": "exploit", "body": exploit})
+            #print("sending exploit", exploit)
+            #await websocket.send_json({"type": "exploit", "body": exploit})
     except Exception as e:
         print(e)
         pass
