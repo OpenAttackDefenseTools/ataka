@@ -27,8 +27,17 @@ class FlagStatus(str, enum.Enum):
     # the service did not check the flag, but told us to fuck off
     RATELIMIT = 'ratelimit'
 
+    # the flag format is wrong
+    FORMAT = 'format'
+
     # something is wrong with the submission system
     EXCEPTION = 'exception'
+
+    #the flag belongs to the NOP team
+    NOP = 'NOP'
+
+    #the flag belongs to the NOP team
+    OFFLINE = 'offline'
 
     # we tried to submit our own flag and the submission system lets us know
     OWNFLAG = 'ownflag'
