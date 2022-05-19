@@ -7,31 +7,35 @@ version: '3'
 services:
   rabbitmq:
     image: rabbitmq:3.9-management-alpine
-    ports:
-      - "0.0.0.0:15672:15672"
-      - "0.0.0.0:5672:5672"
+    expose:
+      - "15672"
+      - "5672"
     hostname: ataka-rabbitmq
     networks:
       - ataka
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq:rw,Z
 
   postgres:
     image: postgres:14-alpine
     hostname: ataka-postgres
-    ports:
-      - "0.0.0.0:5432:5432"
+    expose:
+      - "5432"
     networks:
       - ataka
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data:rw,Z
 
   adminer:
     image: adminer:latest
-    ports:
-      - "0.0.0.0:8080:8080"
+    expose:
+      - "8080"
     hostname: ataka-adminer
     networks:
       - ataka
@@ -48,8 +52,8 @@ services:
       - ${DATA_STORE}/shared:/data/shared:rw,z
       - ${DATA_STORE}/exploits:/data/exploits:rw,z
       - ./ataka/web:/ataka/web
-    ports:
-      - "0.0.0.0:8000:8000"
+    expose:
+      - "8000"
     security_opt:
       - label:disable
     depends_on:
@@ -69,8 +73,8 @@ services:
       dockerfile: ataka/ui/Dockerfile
     volumes:
       - ./ataka/ui:/ataka/ui
-    ports:
-      - "0.0.0.0:80:8080"
+    expose:
+      - "8080"
     security_opt:
       - label:disable
     depends_on:
@@ -139,6 +143,11 @@ services:
       - ataka
     env_file:
       - .env
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
+
 
 networks:
   ataka:
