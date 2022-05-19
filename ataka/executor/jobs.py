@@ -159,7 +159,7 @@ class JobExecution:
     async def docker_execute(self, container_ref, execution: LocalExecution) -> LocalExecution:
         async def exec_in_container_and_poll_output():
             try:
-                exec_ref = await container_ref.exec(cmd=execution.exploit.docker_cmd, tty=False, environment={
+                exec_ref = await container_ref.exec(cmd=execution.exploit.docker_cmd, workdir="/exploit", tty=False, environment={
                     "TARGET_IP": execution.target.ip,
                     "TARGET_EXTRA": execution.target.extra,
                 })
