@@ -26,7 +26,7 @@ app = typer.Typer()
 async def log():
     await queue.connect()
     async with await queue.get_channel() as channel:
-        output_queue = await OutputQueue.get(channel)
+        output_queue: OutputQueue = await OutputQueue.get(channel)
         async for message in output_queue.wait_for_messages():
             tag = 'MANUAL' if message.manual_id is not None else str(message.execution_id)
             tag = tag.rjust(10)
@@ -50,7 +50,7 @@ async def submit_flag(flag: List[str]):
 
     await queue.connect()
     async with await queue.get_channel() as channel:
-        flag_queue = await FlagQueue.get(channel)
+        flag_queue: FlagQueue = await FlagQueue.get(channel)
         for message in messages:
             result = await flag_queue.send_message(message)
             if isinstance(result, Basic.Ack):
@@ -66,7 +66,7 @@ async def reload():
     await queue.connect()
 
     channel = await get_channel()
-    control_queue = await ControlQueue.get(channel)
+    control_queue: ControlQueue = await ControlQueue.get(channel)
     result = await control_queue.send_message(ControlMessage(action=ControlAction.RELOAD_CONFIG))
     if isinstance(result, Basic.Ack):
         print("OK")
