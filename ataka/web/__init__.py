@@ -155,7 +155,7 @@ async def submit_flag(submission: FlagSubmissionAsync, session: Session = Depend
                       channel=Depends(get_channel)):
     execution_id = submission.execution_id
 
-    output_message = OutputMessage(manual_id=None, execution_id=execution_id, stdout=True, output=submission.flags)
+    output_message = OutputMessage(manual_id=execution_id, execution_id=None, stdout=True, output=submission.flags)
     output_queue = await OutputQueue.get(channel)
     await output_queue.send_message(output_message)
 
