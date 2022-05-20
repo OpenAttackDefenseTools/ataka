@@ -28,7 +28,7 @@ class Flags:
                         async for message in flag_queue.wait_for_messages(timeout=ratelimit):
                             flag_id = message.flag_id
                             flag = message.flag
-                            print(f"Got flag {flag}")
+                            #print(f"Got flag {flag}")
 
                             check_duplicates = select(Flag).where(Flag.id != flag_id).where(Flag.flag == flag).limit(1)
                             duplicate = (await session.execute(check_duplicates)).scalars().first()
@@ -67,6 +67,8 @@ class Flags:
                             await flag_notify_queue.send_message(FlagNotifyMessage(flag.id, flag.manual_id, flag.execution_id))
 
                         await sleep(ratelimit)
+                    else:
+                        print("No flags for now")
 
     async def poll_and_parse_output(self):
         async with await get_channel() as channel:
