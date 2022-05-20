@@ -18,7 +18,7 @@ FLAG_BATCHSIZE = 500
 
 FLAG_RATELIMIT = 1  # Wait in seconds between each call of submit_flags()
 
-START_TIME = 1653058800 # Fri May 20 2022 5:00:00 PM GMT+02:00 (Central European Summer Time)
+START_TIME = 1653055201 # Fri May 20 2022 4:00:01 PM GMT+02:00 (Central European Summer Time)
 
 SUBMIT_DOM = 'submission.ctf.saarland'
 SUBMIT_PORT = 31337
@@ -26,7 +26,7 @@ FLAGID_URL = 'https://scoreboard.ctf.saarland/attack.json'
 
 
 def get_services():
-    return ["empty", "is", "bad"]
+    return ["backd00r", "bytewarden", "saarbahn", "saarcloud", "saarloop", "saarsecvv"]
 
 
 def get_targets():
