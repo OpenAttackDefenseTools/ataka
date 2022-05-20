@@ -13,10 +13,9 @@ ROUND_TIME = 120
 # format: regex, group where group 0 means the whole regex
 FLAG_REGEX = r"SAAR\{[A-Za-z0-9-_]{32}\}", 0
 
-
 FLAG_BATCHSIZE = 500
 
-FLAG_RATELIMIT = 1  # Wait in seconds between each call of submit_flags()
+FLAG_RATELIMIT = 0.5  # Wait in seconds between each call of submit_flags()
 
 START_TIME = 1653055201 # Fri May 20 2022 4:00:01 PM GMT+02:00 (Central European Summer Time)
 
@@ -46,6 +45,9 @@ def get_targets():
             ]
             for service, service_info in flag_ids.items()
         }
+
+        targets["saarcloud"] = [{"ip": team["ip"], "extra": ""} for team in teams if team["online"]]
+
         return targets
     except Exception as e:
         print(f"Error while getting targets: {e}")
@@ -88,6 +90,7 @@ def submit_flags(flags):
         results += [FlagStatus.ERROR]*(len(flags)-len(results))
 
     return results
+
 
 logger = logging.getLogger()
 
