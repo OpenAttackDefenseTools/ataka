@@ -204,7 +204,6 @@ async def exploit_all(session: Session = Depends(get_session)):
 
 
 class ExploitCreateRequest(BaseModel):
-    exploit_id: str
     history_id: str
     author: str
     context: str
@@ -213,15 +212,26 @@ class ExploitCreateRequest(BaseModel):
 @app.post("/api/exploit")
 async def exploit_create(req: ExploitCreateRequest,
                          session: Session = Depends(get_session)):
-    if "/" in req.exploit_id:
-        return {"success": False, "error": "Invalid character in exploit ID"}
-
     try:
         context = base64.b64decode(req.context)
     except binascii.Error:
         return {"success": False, "error": "Invalid Docker context encoding"}
 
-    ctx_path = f"/data/exploits/{req.exploit_id}"
+    get_exploits = select(Exploit).where(Exploit.exploit_history_id == req.history_id)
+    exploits = (await session.execute(get_exploits)).scalars()
+
+    max_idx = 0
+    prefix = req.history_id + '-'
+    for exploit in exploits:
+        if exploit.id.startswith(prefix):
+            try:
+                idx = int(exploit.id[len(prefix):])
+            except ValueError:
+                continue
+            max_idx = max(max_idx, idx)
+    exploit_id = f'{prefix}{max_idx + 1}'
+
+    ctx_path = f"/data/exploits/{exploit_id}"
     excl_opener = lambda path, flags: os.open(path, flags | os.O_EXCL)
     try:
         with open(ctx_path, "wb", opener=excl_opener) as f:
@@ -229,7 +239,7 @@ async def exploit_create(req: ExploitCreateRequest,
     except FileExistsError:
         return {"success": False, "error": "Exploit already exists (file)"}
 
-    exploit = Exploit(id=req.exploit_id, exploit_history_id=req.history_id,
+    exploit = Exploit(id=exploit_id, exploit_history_id=req.history_id,
                       active=False, author=req.author)
     session.add(exploit)
     try:
@@ -237,7 +247,7 @@ async def exploit_create(req: ExploitCreateRequest,
     except IntegrityError:
         return {"success": False, "error": "Exploit already exists (db)"}
 
-    return {"success": True, "error": ""}
+    return {"success": True, "error": "", "exploit_id": exploit_id}
 
 
 class ExploitPatchRequest(BaseModel):
