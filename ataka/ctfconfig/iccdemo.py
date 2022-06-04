@@ -59,9 +59,10 @@ FLAG_BATCHSIZE = 100
 
 FLAG_RATELIMIT = 0.5  # Wait in seconds between each call of submit_flags()
 
-START_TIME = 1652529600 # Sat May 14 2022 14:00:00 GMT+0200 (Central European Summer Time)
+START_TIME = 1654430401 # Sun Jun 5 2022 14:00:00 GMT+0200 (Central European Summer Time)
 
-TEAM_TOKEN = '35888f39d94ce75c3748f09b43ccd215'
+#TEAM_TOKEN = '35888f39d94ce75c3748f09b43ccd215'
+TEAM_TOKEN = 'd81f9b68a7e2b02dfa5281cab7080df2'
 SUBMIT_URL = 'http://10.1.0.2:8080/flags'
 FLAGID_URL = 'http://10.1.0.2:8081/flagIds'
 
@@ -118,6 +119,8 @@ def submit_flags(flags):
 
     return results
 
+def scrape_scoreboard():
+    return []
 
 if __name__ == '__main__':
     import pprint
