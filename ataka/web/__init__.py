@@ -1,15 +1,21 @@
+import os
+import base64
+import binascii
+
 import asyncio
 import random
 import re
 from asyncio import CancelledError
 
-from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect, UploadFile
+from pydantic import BaseModel
 from sqlalchemy.future import select
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError, NoResultFound
 from websockets.exceptions import ConnectionClosedOK
 
 from ataka.common import queue, database
-from ataka.common.database.models import Job, Target, Flag
+from ataka.common.database.models import Job, Target, Flag, ExploitHistory, Exploit
 from ataka.common.queue.output import OutputMessage, OutputQueue
 from ataka.web.schemas import FlagSubmission, FlagSubmissionAsync
 from ataka.web.state import GlobalState
@@ -160,6 +166,97 @@ async def submit_flag(submission: FlagSubmissionAsync, session: Session = Depend
     await output_queue.send_message(output_message)
 
     return {"success": True}
+
+
+@app.get("/api/exploit_history")
+async def exploit_history_list(session: Session = Depends(get_session)):
+    get_histories = select(ExploitHistory)
+    histories = (await session.execute(get_histories)).scalars()
+    return [x.to_dict() for x in histories]
+
+
+class ExploitHistoryCreateRequest(BaseModel):
+    history_id: str
+    service: str
+
+
+@app.post("/api/exploit_history")
+async def exploit_history_create(req: ExploitHistoryCreateRequest,
+                                 session: Session = Depends(get_session)):
+    if state.ctf_config is None or req.service not in state.ctf_config["services"]:
+        return {"success": False, "error": "Unknown service"}
+
+    history = ExploitHistory(id=req.history_id, service=req.service)
+    session.add(history)
+    try:
+        await session.commit()
+    except IntegrityError:
+        return {"success": False, "error": "History already exists"}
+
+    return {"success": True, "error": ""}
+
+
+@app.get("/api/exploit")
+async def exploit_all(session: Session = Depends(get_session)):
+    get_exploits = select(Exploit)
+    exploits = (await session.execute(get_exploits)).scalars()
+    return [x.to_dict() for x in exploits]
+
+
+class ExploitCreateRequest(BaseModel):
+    exploit_id: str
+    history_id: str
+    author: str
+    context: str
+
+
+@app.post("/api/exploit")
+async def exploit_create(req: ExploitCreateRequest,
+                         session: Session = Depends(get_session)):
+    if "/" in req.exploit_id:
+        return {"success": False, "error": "Invalid character in exploit ID"}
+
+    try:
+        context = base64.b64decode(req.context)
+    except binascii.Error:
+        return {"success": False, "error": "Invalid Docker context encoding"}
+
+    ctx_path = f"/data/exploits/{req.exploit_id}"
+    excl_opener = lambda path, flags: os.open(path, flags | os.O_EXCL)
+    try:
+        with open(ctx_path, "wb", opener=excl_opener) as f:
+            f.write(context)
+    except FileExistsError:
+        return {"success": False, "error": "Exploit already exists (file)"}
+
+    exploit = Exploit(id=req.exploit_id, exploit_history_id=req.history_id,
+                      active=False, author=req.author)
+    session.add(exploit)
+    try:
+        await session.commit()
+    except IntegrityError:
+        return {"success": False, "error": "Exploit already exists (db)"}
+
+    return {"success": True, "error": ""}
+
+
+class ExploitPatchRequest(BaseModel):
+    active: bool
+
+
+@app.patch("/api/exploit/{exploit_id}")
+async def exploit_patch(exploit_id, req: ExploitPatchRequest,
+                        session: Session = Depends(get_session)):
+    get_exploit = select(Exploit).where(Exploit.id == exploit_id)
+    try:
+        exploit = (await session.execute(get_exploit)).scalar_one()
+    except NoResultFound:
+        return {"success": False, "error": "Exploit does not exist"}
+
+    exploit.active = req.active
+    await session.commit()
+
+    return {"success": True, "error": ""}
 
 
 @app.websocket("/api/ws")
