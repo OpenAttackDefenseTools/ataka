@@ -92,3 +92,7 @@ def submit_flags(flags):
         logger.error("Exception during flag submission: {} -> {}".format(str(r.status_code), str(r.text)))
         return FlagStatus.ERROR
 """
+
+
+def scrape_scoreboard():
+    return []
