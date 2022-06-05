@@ -63,14 +63,14 @@ START_TIME = 1654430401 # Sun Jun 5 2022 14:00:00 GMT+0200 (Central European Sum
 
 #TEAM_TOKEN = '35888f39d94ce75c3748f09b43ccd215'
 TEAM_TOKEN = 'd81f9b68a7e2b02dfa5281cab7080df2'
-SUBMIT_URL = 'http://10.1.0.2:8080/flags'
-FLAGID_URL = 'http://10.1.0.2:8081/flagIds'
+SUBMIT_URL = 'http://10.10.0.1:8080/flags'
+FLAGID_URL = 'http://10.10.0.1:8081/flagIds'
 
 
 # End config
 
 def get_services():
-    return ['SaaS']
+    return ['saas', 'biomarkt']
 
 
 def get_targets():
@@ -83,6 +83,7 @@ def get_targets():
                 'extra': json.dumps(ip_info),
             }
             for ip, ip_info in service_info.items()
+            if ip != '10.60.4.1'
         ]
         for service, service_info in flag_ids.items()
     }
@@ -119,8 +120,10 @@ def submit_flags(flags):
 
     return results
 
+
 def scrape_scoreboard():
     return []
+
 
 if __name__ == '__main__':
     import pprint
