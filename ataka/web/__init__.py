@@ -7,7 +7,7 @@ import random
 import re
 from asyncio import CancelledError
 
-from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect, UploadFile
+from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.future import select
@@ -16,7 +16,7 @@ from sqlalchemy.exc import IntegrityError, NoResultFound
 from websockets.exceptions import ConnectionClosedOK
 
 from ataka.common import queue, database
-from ataka.common.database.models import Job, Target, Flag, ExploitHistory, Exploit
+from ataka.common.database.models import Job, Target, Flag, Execution, ExploitHistory, Exploit
 from ataka.common.queue.output import OutputMessage, OutputQueue
 from ataka.web.schemas import FlagSubmission, FlagSubmissionAsync
 from ataka.web.state import GlobalState
@@ -265,7 +265,7 @@ class ExploitPatchRequest(BaseModel):
 
 
 @app.patch("/api/exploit/{exploit_id}")
-async def exploit_patch(exploit_id, req: ExploitPatchRequest,
+async def exploit_patch(exploit_id: str, req: ExploitPatchRequest,
                         session: Session = Depends(get_session)):
     get_exploit = select(Exploit).where(Exploit.id == exploit_id)
     try:
@@ -277,6 +277,27 @@ async def exploit_patch(exploit_id, req: ExploitPatchRequest,
     await session.commit()
 
     return {"success": True, "error": ""}
+
+
+@app.get("/api/exploit/{exploit_id}/jobs")
+async def exploit_jobs(exploit_id: str, limit: int = 1, start: int = 0,
+                       session: Session = Depends(get_session)):
+    get_jobs = select(Job) \
+        .where((Job.exploit_id == exploit_id) & (Job.id >= start)) \
+        .order_by(Job.timestamp.desc()) \
+        .limit(limit)
+    jobs = (await session.execute(get_jobs)).scalars()
+
+    result = []
+    for job in jobs:
+        get_executions = select(Execution).where(Execution.job_id == job.id)
+        executions = (await session.execute(get_executions)).scalars()
+        result.append({
+            'job': job.to_dict(),
+            'executions': [x.to_dict() for x in executions],
+        })
+
+    return result
 
 
 @app.websocket("/api/ws")
