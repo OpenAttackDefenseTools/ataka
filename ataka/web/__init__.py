@@ -9,6 +9,7 @@ from asyncio import CancelledError
 
 from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect, UploadFile
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.future import select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, NoResultFound
@@ -53,7 +54,10 @@ def get_channel():
 
 @app.get("/api/targets")
 async def all_targets(session: Session = Depends(get_session)):
-    get_targets = select(Target).limit(100)
+    get_max_version = select(func.max(Target.version))
+    version = (await session.execute(get_max_version)).scalar_one()
+
+    get_targets = select(Target).where(Target.version == version)
     target_objs = (await session.execute(get_targets)).scalars()
     targets = [x.to_dict() for x in target_objs]
 
@@ -62,7 +66,10 @@ async def all_targets(session: Session = Depends(get_session)):
 
 @app.get("/api/targets/service/{service_name}")
 async def targets_by_service(service_name, session: Session = Depends(get_session)):
-    get_targets = select(Target).where(Target.service == service_name).limit(100)
+    get_max_version = select(func.max(Target.version))
+    version = (await session.execute(get_max_version)).scalar_one()
+
+    get_targets = select(Target).where(Target.service == service_name).where(Target.version == version)
     target_objs = (await session.execute(get_targets)).scalars()
     targets = [x.to_dict() for x in target_objs]
 
@@ -71,7 +78,10 @@ async def targets_by_service(service_name, session: Session = Depends(get_sessio
 
 @app.get("/api/targets/ip/{ip_addr}")
 async def targets_by_ip(ip_addr, session: Session = Depends(get_session)):
-    get_targets = select(Target).where(Target.ip == ip_addr).limit(100)
+    get_max_version = select(func.max(Target.version))
+    version = (await session.execute(get_max_version)).scalar_one()
+
+    get_targets = select(Target).where(Target.ip == ip_addr).where(Target.version == version)
     target_objs = (await session.execute(get_targets)).scalars()
     targets = [x.to_dict() for x in target_objs]
 
@@ -90,7 +100,7 @@ async def all_jobs(session: Session = Depends(get_session)):
 @app.get("/api/job/{job_id}/status")
 async def get_job(job_id, session: Session = Depends(get_session)):
     get_jobs = select(Job).where(Job.id == job_id).limit(1)
-    job_obj = (await session.execute(get_jobs)).scalars().first()
+    job_obj = (await session.execute(get_jobs)).scalar_one()
 
     return job_obj.to_dict()
 
