@@ -10,3 +10,5 @@ class Exclusion(Base, JsonBase):
     exploit_history_id = Column(String, ForeignKey("exploit_histories.id"),
                                 primary_key=True)
     target_ip = Column(String, primary_key=True)
+
+    exploit_history = relationship("ExploitHistory", back_populates="exclusions")
