@@ -61,6 +61,14 @@ FLAG_RATELIMIT = 0.5  # Wait in seconds between each call of submit_flags()
 
 START_TIME = 1654430401 # Sun Jun 5 2022 14:00:00 GMT+0200 (Central European Summer Time)
 
+# IPs that are always excluded from attacks.
+STATIC_EXCLUSIONS = set([
+    # Ourselves
+    '10.60.4.1',
+    # NOP team
+    '10.60.8.1',
+])
+
 #TEAM_TOKEN = '35888f39d94ce75c3748f09b43ccd215'
 TEAM_TOKEN = 'd81f9b68a7e2b02dfa5281cab7080df2'
 SUBMIT_URL = 'http://10.10.0.1:8080/flags'
@@ -83,7 +91,6 @@ def get_targets():
                 'extra': json.dumps(ip_info),
             }
             for ip, ip_info in service_info.items()
-            if ip != '10.60.4.1'
         ]
         for service, service_info in flag_ids.items()
     }

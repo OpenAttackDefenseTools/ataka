@@ -14,6 +14,10 @@ FLAG_BATCHSIZE = 100
 FLAG_RATELIMIT = 0.5  # Wait in seconds between each call of submit_flags()
 
 START_TIME = 1644859882
+
+# IPs that are always excluded from attacks.
+STATIC_EXCLUSIONS = set([])
+
 # End config
 
 

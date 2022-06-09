@@ -19,6 +19,9 @@ FLAG_RATELIMIT = 0.5  # Wait in seconds between each call of submit_flags()
 
 START_TIME = 1653055201 # Fri May 20 2022 4:00:01 PM GMT+02:00 (Central European Summer Time)
 
+# IPs that are always excluded from attacks.
+STATIC_EXCLUSIONS = set([])
+
 SUBMIT_DOM = 'submission.ctf.saarland'
 SUBMIT_PORT = 31337
 FLAGID_URL = 'https://scoreboard.ctf.saarland/attack.json'
