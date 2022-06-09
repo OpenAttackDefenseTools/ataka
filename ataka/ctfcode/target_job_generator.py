@@ -52,16 +52,21 @@ class TargetJobGenerator:
                         # if we have an exploit, submit a job for this service
                         get_exploits_for_service = select(ExploitHistory) \
                             .where(ExploitHistory.service == service) \
-                            .options(selectinload(ExploitHistory.exploits))
+                            .options(
+                                selectinload(ExploitHistory.exploits),
+                                selectinload(ExploitHistory.exclusions))
                         exploit_list = (await session.execute(get_exploits_for_service)).scalars()
                         for history in exploit_list:
+                            excluded_ips = set(x.target_ip for x in history.exclusions)
+                            excluded_ips.update(self._ctf.get_static_exclusions())
+                            history_target_objs = [t for t in target_objs if t.ip not in excluded_ips]
                             for exploit in [e for e in history.exploits if e.active]:
                                 job_obj = Job(status=JobExecutionStatus.QUEUED, timeout=datetime.fromtimestamp(self._ctf.get_next_tick_start()),
                                               exploit=exploit)
                                 session.add(job_obj)
 
                                 session.add_all([Execution(job=job_obj, target=t,
-                                                           status=JobExecutionStatus.QUEUED) for t in target_objs])
+                                                           status=JobExecutionStatus.QUEUED) for t in history_target_objs])
 
                                 job_list += [job_obj]
 
