@@ -7,16 +7,17 @@ import random
 import re
 from asyncio import CancelledError
 
+from typing import Set
 from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.future import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import selectinload, Session
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from websockets.exceptions import ConnectionClosedOK
 
 from ataka.common import queue, database
-from ataka.common.database.models import Job, Target, Flag, Execution, ExploitHistory, Exploit
+from ataka.common.database.models import Job, Target, Flag, Execution, ExploitHistory, Exploit, Exclusion
 from ataka.common.queue.output import OutputMessage, OutputQueue
 from ataka.web.schemas import FlagSubmission, FlagSubmissionAsync
 from ataka.web.state import GlobalState
@@ -205,6 +206,62 @@ async def exploit_history_create(req: ExploitHistoryCreateRequest,
 
     return {"success": True, "error": ""}
 
+
+@app.get("/api/exploit_history/{history_id}/exclusions")
+async def exploit_history_get_exclusions(
+    history_id: str,
+    session: Session = Depends(get_session)
+):
+    get_history = select(ExploitHistory) \
+        .where(ExploitHistory.id == history_id) \
+        .options(selectinload(ExploitHistory.exclusions))
+    try:
+        history = (await session.execute(get_history)).scalar_one()
+    except NoResultFound:
+        return {"success": False, "error": "History does not exist"}
+
+    return {
+        "success": True,
+        "error": "",
+        "target_ips": [x.target_ip for x in history.exclusions]
+    }
+
+
+class ExclusionsPutRequest(BaseModel):
+    target_ips: Set[str]
+
+
+@app.put("/api/exploit_history/{history_id}/exclusions")
+async def exploit_history_put_exclusions(
+    history_id: str,
+    req: ExclusionsPutRequest,
+    session: Session = Depends(get_session)
+):
+    get_history = select(ExploitHistory) \
+        .where(ExploitHistory.id == history_id) \
+        .options(selectinload(ExploitHistory.exclusions))
+    try:
+        history = (await session.execute(get_history)).scalar_one()
+    except NoResultFound:
+        return {"success": False, "error": "History does not exist"}
+
+    cur_ips = set(x.target_ip for x in history.exclusions)
+
+    session.begin()
+    try:
+        for ip in req.target_ips:
+            if ip not in cur_ips:
+                excl = Exclusion(exploit_history_id=history_id, target_ip=ip)
+                session.add(excl)
+        for excl in history.exclusions:
+            if excl.target_ip not in req.target_ips:
+                await session.delete(excl)
+        await session.commit()
+    except:
+        await session.rollback()
+        raise
+
+    return {"success": True, "error": ""}
 
 @app.get("/api/exploit")
 async def exploit_all(session: Session = Depends(get_session)):
