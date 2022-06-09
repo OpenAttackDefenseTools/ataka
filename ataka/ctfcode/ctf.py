@@ -61,6 +61,9 @@ class CTF:
     def get_next_tick_start(self):
         return self.get_start_time() + self.get_round_time() * (self.get_cur_tick() + 1)
 
+    def get_static_exclusions(self):
+        return self._module.STATIC_EXCLUSIONS
+
     def get_services(self):
         return self._module.get_services()
 

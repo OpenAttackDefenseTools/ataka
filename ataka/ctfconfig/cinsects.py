@@ -17,7 +17,8 @@ FLAG_RATELIMIT = 0.5  # Wait in seconds between each call of submit_flags()
 
 START_TIME = 1645280101
 
-
+# IPs that are always excluded from attacks.
+STATIC_EXCLUSIONS = set([])
 
 LOGIN_URL = "https://dashboard.ctf.cinsects.de/login/?next=/ctf/submit_flag/manual/"
 SUBMIT_URL = "https://dashboard.ctf.cinsects.de/ctf/submit_flag/?format=json"
