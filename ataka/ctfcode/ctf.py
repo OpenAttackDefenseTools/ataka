@@ -1,7 +1,24 @@
 import time
 from importlib import import_module, reload
+import logging
+import traceback
+import functools
 
 from ataka.common.queue import get_channel, ControlQueue, ControlAction, ControlMessage
+
+
+def catch(default = None):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                print(f"Error occurred while accessing CTFCode")
+                logging.error(traceback.format_exc())
+                return default
+        return wrapper
+    return decorator
 
 
 # A wrapper that loads the specified ctf by name, and wraps the api with support
@@ -35,22 +52,28 @@ class CTF:
                                                                    "services": self.get_services(),
                                                                }))
 
+    @catch(default=None)
     def reload(self):
         print("Reloading ctf code")
         reload(self._module)
 
+    @catch(default=60)
     def get_round_time(self):
         return self._module.ROUND_TIME
 
+    @catch(default=(r".*", 0))
     def get_flag_regex(self):
         return self._module.FLAG_REGEX
 
+    @catch(default=100)
     def get_flag_batchsize(self):
         return self._module.FLAG_BATCHSIZE
 
+    @catch(default=1)
     def get_flag_ratelimit(self):
         return self._module.FLAG_RATELIMIT
 
+    @catch(default=1577840400)
     def get_start_time(self):
         return self._module.START_TIME
 
@@ -61,14 +84,19 @@ class CTF:
     def get_next_tick_start(self):
         return self.get_start_time() + self.get_round_time() * (self.get_cur_tick() + 1)
 
+    @catch(default=set())
     def get_static_exclusions(self):
         return self._module.STATIC_EXCLUSIONS
 
+    @catch(default=[])
     def get_services(self):
         return self._module.get_services()
 
+    @catch(default={})
     def get_targets(self):
         return self._module.get_targets()
 
+    @catch(default=[])
     def submit_flags(self, flags):
         return self._module.submit_flags(flags)
+
