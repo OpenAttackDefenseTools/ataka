@@ -350,11 +350,27 @@ async def exploit_jobs(exploit_id: str, limit: int = 1, start: int = 0,
         get_executions = select(Execution).where(Execution.job_id == job.id)
         executions = (await session.execute(get_executions)).scalars()
         result.append({
-            'job': job.to_dict(),
-            'executions': [x.to_dict() for x in executions],
+            "job": job.to_dict(),
+            "executions": [x.to_dict() for x in executions],
         })
 
     return result
+
+
+@app.get("/api/exploit/{exploit_id}/download")
+async def exploit_download(exploit_id: str,
+                           session: Session = Depends(get_session)):
+    get_exploit = select(Exploit).where(Exploit.id == exploit_id)
+    try:
+        (await session.execute(get_exploit)).scalar_one()
+    except NoResultFound:
+        return {"success": False, "error": "Exploit does not exist"}
+
+    ctx_path = f"/data/exploits/{exploit_id}"
+    with open(ctx_path, "rb") as f:
+        data = f.read()
+
+    return {"success": True, "error": "", "data": base64.b64encode(data).decode()}
 
 
 @app.websocket("/api/ws")
