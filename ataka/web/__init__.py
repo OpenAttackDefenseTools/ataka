@@ -342,19 +342,19 @@ async def exploit_jobs(exploit_id: str, limit: int = 1, start: int = 0,
     get_jobs = select(Job) \
         .where((Job.exploit_id == exploit_id) & (Job.id >= start)) \
         .order_by(Job.timestamp.desc()) \
-        .limit(limit)
+        .limit(limit) \
+        .options(
+            selectinload(Job.executions).selectinload(Execution.target))
     jobs = (await session.execute(get_jobs)).scalars()
 
-    result = []
-    for job in jobs:
-        get_executions = select(Execution).where(Execution.job_id == job.id)
-        executions = (await session.execute(get_executions)).scalars()
-        result.append({
+    return [
+        {
             "job": job.to_dict(),
-            "executions": [x.to_dict() for x in executions],
-        })
-
-    return result
+            "executions": [x.to_dict() for x in job.executions],
+            "targets": [x.target.to_dict() for x in job.executions],
+        }
+        for job in jobs
+    ]
 
 
 @app.get("/api/exploit/{exploit_id}/download")
