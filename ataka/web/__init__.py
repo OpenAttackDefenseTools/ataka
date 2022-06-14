@@ -284,12 +284,17 @@ async def exploit_create(req: ExploitCreateRequest,
     except binascii.Error:
         return {"success": False, "error": "Invalid Docker context encoding"}
 
-    get_exploits = select(Exploit).where(Exploit.exploit_history_id == req.history_id)
-    exploits = (await session.execute(get_exploits)).scalars()
+    get_history = select(ExploitHistory) \
+        .where(ExploitHistory.id == req.history_id) \
+        .options(selectinload(ExploitHistory.exploits))
+    try:
+        history = (await session.execute(get_history)).scalar_one()
+    except NoResultFound:
+        return {"success": False, "error": "History does not exist"}
 
     max_idx = 0
     prefix = req.history_id + '-'
-    for exploit in exploits:
+    for exploit in history.exploits:
         if exploit.id.startswith(prefix):
             try:
                 idx = int(exploit.id[len(prefix):])
