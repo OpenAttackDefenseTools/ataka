@@ -26,7 +26,8 @@ def get_services():
 
 
 def get_targets():
-    return {service: [{"ip": f"10.99.{i}.2", "extra": ""} for i in range(3)] for service in get_services()}
+    extra = '["1234", "5678"]'
+    return {service: [{"ip": f"10.99.{i}.2", "extra": extra} for i in range(3)] for service in get_services()}
 
 
 """
