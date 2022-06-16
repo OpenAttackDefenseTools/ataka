@@ -77,7 +77,7 @@ FLAGID_URL = 'http://10.10.0.1:8081/flagIds'
 # End config
 
 def get_services():
-    return ['saas', 'biomarkt']
+    return ['closedsea', 'trademark', 'rpn', 'cyberuni']
 
 
 def get_targets():
