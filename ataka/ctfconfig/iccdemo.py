@@ -77,7 +77,7 @@ FLAGID_URL = 'http://10.10.0.1:8081/flagIds'
 # End config
 
 def get_services():
-    return ['closedsea', 'trademark', 'rpn', 'cyberuni']
+    return ['ExamPortal', 'ExamNotes', 'EncryptedNotes', 'ClosedSea-1', 'ClosedSea-2', 'Trademark']
 
 
 def get_targets():
