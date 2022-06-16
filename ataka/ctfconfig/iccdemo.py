@@ -59,7 +59,7 @@ FLAG_BATCHSIZE = 100
 
 FLAG_RATELIMIT = 0.5  # Wait in seconds between each call of submit_flags()
 
-START_TIME = 1654430401 # Sun Jun 5 2022 14:00:00 GMT+0200 (Central European Summer Time)
+START_TIME = 1655359200+1 # Thursday 16 June 2022 06:00:00 GMT
 
 # IPs that are always excluded from attacks.
 STATIC_EXCLUSIONS = set([
@@ -69,8 +69,7 @@ STATIC_EXCLUSIONS = set([
     '10.60.8.1',
 ])
 
-#TEAM_TOKEN = '35888f39d94ce75c3748f09b43ccd215'
-TEAM_TOKEN = 'd81f9b68a7e2b02dfa5281cab7080df2'
+TEAM_TOKEN = '3195e961fc60275492b910ff978928c6'
 SUBMIT_URL = 'http://10.10.0.1:8080/flags'
 FLAGID_URL = 'http://10.10.0.1:8081/flagIds'
 
