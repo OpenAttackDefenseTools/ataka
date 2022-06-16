@@ -66,7 +66,7 @@ STATIC_EXCLUSIONS = set([
     # Ourselves
     '10.60.4.1',
     # NOP team
-    '10.60.8.1',
+    '10.60.0.1',
 ])
 
 TEAM_TOKEN = '3195e961fc60275492b910ff978928c6'
