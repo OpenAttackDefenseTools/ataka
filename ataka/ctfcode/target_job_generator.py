@@ -42,6 +42,7 @@ class TargetJobGenerator:
                     job_list = []
                     for service, targets in all_targets.items():
                         if service not in services:
+                            print(f"{service=} not in {services=}")
                             # TODO: log warning
                             continue
 

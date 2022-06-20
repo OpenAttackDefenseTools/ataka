@@ -89,10 +89,10 @@ class JobExecution:
         # Execute all the exploits
         results = await asyncio.gather(*execute_tasks)
 
-        try:
-            os.rmdir(persist_dir)
-        except (FileNotFoundError, OSError):
-            pass
+        #try:
+        #    os.rmdir(persist_dir)
+        #except (FileNotFoundError, OSError):
+        #    pass
 
         await self.submit_to_database(results)
         # TODO: send to ctfconfig
@@ -116,7 +116,8 @@ class JobExecution:
             exploit = await self._exploits.ensure_exploit(job.exploit_id)
             # TODO: deal with this
             if exploit.status is not LocalExploitStatus.FINISHED:
-                print(f"Got error exploit f{exploit.build_output}")
+                print(f"Got error exploit {exploit.build_output}")
+                print(f"   {exploit}")
                 job.status = JobExecutionStatus.FAILED
                 for e in executions:
                     e.status = JobExecutionStatus.FAILED

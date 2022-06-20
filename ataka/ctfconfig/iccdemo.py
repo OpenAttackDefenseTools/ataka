@@ -77,7 +77,10 @@ FLAGID_URL = 'http://10.10.0.1:8081/flagIds'
 # End config
 
 def get_services():
-    return ['ExamPortal', 'ExamNotes', 'EncryptedNotes', 'ClosedSea-1', 'ClosedSea-2', 'Trademark']
+   return ['ExamPortal', 'ExamNotes', 'EncryptedNotes', 'ClosedSea-1', 'ClosedSea-2', 'Trademark', "rpn"]
+
+def get_scoreboard_services():
+    return ['ClosedSea-1', 'ClosedSea-2', 'ExamNotes', 'EncryptedNotes', 'ExamPortal', 'RPN1', 'RPN2', 'Trademark']
 
 
 def get_targets():
@@ -93,6 +96,8 @@ def get_targets():
         ]
         for service, service_info in flag_ids.items()
     }
+
+    targets["rpn"] = [{'ip': ip, "extra": "[]"} for _,ip in get_teams_info().items()]
 
     return targets
 
@@ -116,19 +121,17 @@ def submit_flags(flags):
             status = FlagStatus.INACTIVE
         elif 'flag is your own' in msg:
             status = FlagStatus.OWNFLAG
-        elif 'flag is too old' in msg:
+        elif 'flag too old' in msg or 'flag is too old' in msg:
             status = FlagStatus.INACTIVE
         elif 'flag already claimed' in msg:
             status = FlagStatus.DUPLICATE
         else:
             status = FlagStatus.ERROR
+            print(f"Got error while flagsubmission: {msg}")
         results.append(status)
 
     return results
 
-
-def scrape_scoreboard():
-    return []
 
 
 if __name__ == '__main__':
