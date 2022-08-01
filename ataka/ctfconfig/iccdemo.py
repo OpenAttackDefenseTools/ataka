@@ -1,53 +1,57 @@
 import logging
-
-from ataka.common.database.models import FlagStatus
-
 import json
 import requests
 
+try:
+    from ataka.common.database.models import FlagStatus
+except ImportError as e:
+    import enum
+    class FlagStatus(str, enum.Enum):
+        UNKNOWN = 'unknown'
 
-"""
-import enum
-class FlagStatus(str, enum.Enum):
-    UNKNOWN = 'unknown'
+        # everything is fine
+        OK = 'ok'
 
-    # everything is fine
-    OK = 'ok'
+        # Flag is currently being submitted
+        QUEUED = 'queued'
 
-    # Flag is currently being submitted
-    QUEUED = 'queued'
+        # Flag is currently being submitted
+        PENDING = 'pending'
 
-    # Flag is currently being submitted
-    PENDING = 'pending'
+        # We already submitted this flag and the submission system tells us thats
+        DUPLICATE = 'duplicate'
 
-    # We already submitted this flag and the submission system tells us thats
-    DUPLICATE = 'duplicate'
+        # something is wrong with our submitter
+        ERROR = 'error'
 
-    # something is wrong with our submitter
-    ERROR = 'error'
+        # the service did not check the flag, but told us to fuck off
+        RATELIMIT = 'ratelimit'
 
-    # the service did not check the flag, but told us to fuck off
-    RATELIMIT = 'ratelimit'
+        # something is wrong with the submission system
+        EXCEPTION = 'exception'
 
-    # something is wrong with the submission system
-    EXCEPTION = 'exception'
+        # we tried to submit our own flag and the submission system lets us know
+        OWNFLAG = 'ownflag'
 
-    # we tried to submit our own flag and the submission system lets us know
-    OWNFLAG = 'ownflag'
+        # the flag is not longer active. This is used if a flags are restricted to a
+        # specific time frame
+        INACTIVE = 'inactive'
 
-    # the flag is not longer active. This is used if a flags are restricted to a
-    # specific time frame
-    INACTIVE = 'inactive'
+        # flag fits the format and could be sent to the submission system, but the
+        # submission system told us it is invalid
+        INVALID = 'invalid'
 
-    # flag fits the format and could be sent to the submission system, but the
-    # submission system told us it is invalid
-    INVALID = 'invalid'
+        # This status code is used in case the scoring system requires the services to
+        # be working. Flags that are rejected might be sent again!
+        SERVICEBROKEN = 'servicebroken'
 
-    # This status code is used in case the scoring system requires the services to
-    # be working. Flags that are rejected might be sent again!
-    SERVICEBROKEN = 'servicebroken'
-"""
+# Our own host
+OWN_HOST = '10.60.4.1'
 
+RUNLOCAL_TARGETS = [
+    # NOP Team
+    '10.60.0.1'
+]
 
 # Config for framework
 ROUND_TIME = 120
@@ -97,9 +101,12 @@ def get_targets():
         for service, service_info in flag_ids.items()
     }
 
-    targets["rpn"] = [{'ip': ip, "extra": "[]"} for _,ip in get_teams_info().items()]
+    targets["rpn"] = [{'ip': ip, "extra": "[]"} for _,ip in get_all_target_ips().items()]
 
     return targets
+
+def get_all_target_ips():
+    return {i: f'10.60.{i}.1' for i in range(0, 8)}
 
 
 logger = logging.getLogger()
@@ -131,7 +138,6 @@ def submit_flags(flags):
         results.append(status)
 
     return results
-
 
 
 if __name__ == '__main__':

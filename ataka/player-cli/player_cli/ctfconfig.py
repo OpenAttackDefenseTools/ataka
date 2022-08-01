@@ -1,4 +1,5 @@
 import logging
+from random import random
 
 try:
     from ataka.common.database.models import FlagStatus
@@ -54,7 +55,7 @@ ROUND_TIME = 10
 
 # format: regex, group where group 0 means the whole regex
 FLAG_REGEX = r"[A-Z0-9]{31}=", 0
-FLAG_REGEX = r"(?:[0-9]{1,3}\.){3}[0-9]{1,3}", 0
+#FLAG_REGEX = r"(?:[0-9]{1,3}\.){3}[0-9]{1,3}", 0
 
 FLAG_BATCHSIZE = 100
 
@@ -113,7 +114,10 @@ RESPONSES = {
 
 
 def submit_flags(flags):
-    return [FlagStatus.OK for flag in flags]
+    if(random() > 0.5):
+        return [FlagStatus.OK for flag in flags]
+    else:
+        return [FlagStatus.INVALID for flag in flags]
 
 
 """
@@ -146,7 +150,3 @@ def submit_flags(flags):
         logger.error("Exception during flag submission: {} -> {}".format(str(r.status_code), str(r.text)))
         return FlagStatus.ERROR
 """
-
-
-def scrape_scoreboard():
-    return []

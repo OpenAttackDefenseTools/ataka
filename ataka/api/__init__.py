@@ -9,6 +9,7 @@ from asyncio import CancelledError
 
 from typing import Set
 from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.future import select
@@ -52,6 +53,9 @@ async def get_session():
 def get_channel():
     return state.global_channel
 
+@app.get("/")
+async def get_playercli(session: Session = Depends(get_session)):
+    return FileResponse(path="/ataka/player-cli.pyz", filename="ataka-player-cli.pyz")
 
 @app.get("/api/targets")
 async def all_targets(session: Session = Depends(get_session)):
