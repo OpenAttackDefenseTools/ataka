@@ -11,8 +11,8 @@ COPY ataka/common /ataka/common
 VOLUME /data/shared
 VOLUME /data/exploits
 
-COPY ataka/web/requirements.txt /ataka/web/
-RUN pip install --no-cache-dir -r /ataka/web/requirements.txt
-COPY ataka/web /ataka/web
+COPY ataka/api/requirements.txt /ataka/api/
+RUN pip install --no-cache-dir -r /ataka/api/requirements.txt
+COPY ataka/api /ataka/api
 
-CMD [ "bash", "/ataka/common/delayed_start.sh", "--", "python", "-m", "uvicorn", "--reload", "--host", "0.0.0.0", "ataka.web:app"]
+CMD [ "bash", "/ataka/common/delayed_start.sh", "--", "python", "-m", "uvicorn", "--reload", "--host", "0.0.0.0", "ataka.api:app"]

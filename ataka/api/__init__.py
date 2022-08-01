@@ -19,9 +19,9 @@ from websockets.exceptions import ConnectionClosedOK
 from ataka.common import queue, database
 from ataka.common.database.models import Job, Target, Flag, Execution, ExploitHistory, Exploit, Exclusion
 from ataka.common.queue.output import OutputMessage, OutputQueue
-from ataka.web.schemas import FlagSubmission, FlagSubmissionAsync
-from ataka.web.state import GlobalState
-from ataka.web.websocket_handlers import handle_incoming, handle_websocket_connection
+from ataka.api.schemas import FlagSubmission, FlagSubmissionAsync
+from ataka.api.state import GlobalState
+from ataka.api.websocket_handlers import handle_incoming, handle_websocket_connection
 
 app = FastAPI()
 state: GlobalState
