@@ -42,16 +42,16 @@ services:
     environment:
       ADMINER_DEFAULT_SERVER: postgres
 
-  web:
-    image: cyberwehr/ataka-web
+  api:
+    image: cyberwehr/ataka-api
     user: $USERID
     build:
       context: ./
-      dockerfile: ataka/web/Dockerfile
+      dockerfile: ataka/api/Dockerfile
     volumes:
       - ${DATA_STORE}/shared:/data/shared:rw,z
       - ${DATA_STORE}/exploits:/data/exploits:rw,z
-      - ./ataka/web:/ataka/web
+      - ./ataka/api:/ataka/api
     expose:
       - "8000"
     security_opt:
@@ -59,33 +59,11 @@ services:
     depends_on:
       - postgres
       - rabbitmq
-    hostname: ataka-web
+    hostname: ataka-api
     networks:
       - ataka
     env_file:
       - .env
-
-  ui:
-    image: cyberwehr/ataka-ui
-    user: $USERID
-    build:
-      context: ./
-      dockerfile: ataka/ui/Dockerfile
-    volumes:
-      - ./ataka/ui:/ataka/ui
-    expose:
-      - "8080"
-    security_opt:
-      - label:disable
-    depends_on:
-      - web
-    hostname: ataka-ui
-    networks:
-      - ataka
-    env_file:
-      - .env
-    stdin_open: true # docker run -i
-    tty: true        # docker run -t
 
   executor:
     image: cyberwehr/ataka-executor
