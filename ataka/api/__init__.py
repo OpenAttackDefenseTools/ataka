@@ -20,7 +20,7 @@ from websockets.exceptions import ConnectionClosedOK
 from ataka.common import queue, database
 from ataka.common.database.models import Job, Target, Flag, Execution, ExploitHistory, Exploit, Exclusion
 from ataka.common.queue.output import OutputMessage, OutputQueue
-from ataka.api.schemas import FlagSubmission, FlagSubmissionAsync
+from ataka.api.schemas import FlagSubmission
 from ataka.api.state import GlobalState
 from ataka.api.websocket_handlers import handle_incoming, handle_websocket_connection
 
@@ -169,18 +169,6 @@ async def submit_flag(submission: FlagSubmission, session: Session = Depends(get
     flags = (await session.execute(get_result_flags)).scalars()
 
     return [x.to_dict() for x in flags]
-
-
-@app.post("/api/flag/submit_async")
-async def submit_flag(submission: FlagSubmissionAsync, session: Session = Depends(get_session),
-                      channel=Depends(get_channel)):
-    execution_id = submission.execution_id
-
-    output_message = OutputMessage(manual_id=execution_id, execution_id=None, stdout=True, output=submission.flags)
-    output_queue = await OutputQueue.get(channel)
-    await output_queue.send_message(output_message)
-
-    return {"success": True}
 
 
 @app.get("/api/exploit_history")
