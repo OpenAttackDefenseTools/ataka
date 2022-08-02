@@ -43,7 +43,7 @@ services:
       ADMINER_DEFAULT_SERVER: postgres
 
   api:
-    image: cyberwehr/ataka-api
+    image: openattackdefensetools/ataka-api
     user: $USERID
     build:
       context: ./
@@ -68,7 +68,7 @@ services:
       - .env
 
   executor:
-    image: cyberwehr/ataka-executor
+    image: openattackdefensetools/ataka-executor
     user: $USERID
     build:
       context: ./
@@ -90,7 +90,7 @@ services:
       - .env
 
   ctfcode:
-    image: cyberwehr/ataka-ctfcode
+    image: openattackdefensetools/ataka-ctfcode
     user: $USERID
     build:
       context: ./
@@ -110,7 +110,7 @@ services:
       - .env
 
   cli:
-    image: cyberwehr/ataka-cli
+    image: openattackdefensetools/ataka-cli
     user: $USERID
     build:
       context: ./
