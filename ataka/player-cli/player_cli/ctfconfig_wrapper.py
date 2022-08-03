@@ -28,6 +28,8 @@ def request(method, endpoint, data=None):
     elif endpoint == 'flag/submit':
         return submit_flags(FLAG_FINDER.findall(data['flags']))
     elif endpoint.startswith('targets/service/'):
-        return get_targets(endpoint.split('/')[-1])
+        return get_targets()[endpoint.split('/')[-1]]
+    elif endpoint == 'services':
+        return get_services()
     else:
         assert False, f'Invalid request: {method} {endpoint} {data}'
