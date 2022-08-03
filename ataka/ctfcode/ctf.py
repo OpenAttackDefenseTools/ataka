@@ -3,6 +3,9 @@ from importlib import import_module, reload
 import logging
 import traceback
 import functools
+import os
+import zipapp
+import shutil
 
 from ataka.common.queue import get_channel, ControlQueue, ControlAction, ControlMessage
 
@@ -26,6 +29,22 @@ def catch(default = None):
 class CTF:
     def __init__(self, name: str):
         self._module = import_module(f"ataka.ctfconfig.{name}")
+        self.packagePlayerCLI()
+
+    def packagePlayerCLI(self):
+         print("Packaging player-cli")
+         configPath = os.path.join("/ataka/ctfconfig/", f"{os.getenv('CTF')}.py")
+         shutil.copyfile(configPath, "/ataka/player-cli/player_cli/ctfconfig.py")
+
+         # delete old player-cli
+         shutil.rmtree("/ataka/player_cli/ataka-player-cli.pyz", ignore_errors=True)
+
+         zipapp.create_archive(
+                 source="/ataka/player-cli",
+                 interpreter="/usr/bin/env python3",
+                 target="/ataka/player-cli/ataka-player-cli.pyz"
+         )
+
 
     async def watch_for_reload(self):
         async with await get_channel() as channel:
@@ -54,6 +73,8 @@ class CTF:
 
     @catch(default=None)
     def reload(self):
+        self.packagePlayerCLI()
+
         print("Reloading ctf code")
         reload(self._module)
 
@@ -99,4 +120,3 @@ class CTF:
     @catch(default=[])
     def submit_flags(self, flags):
         return self._module.submit_flags(flags)
-
