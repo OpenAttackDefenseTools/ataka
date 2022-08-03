@@ -1,5 +1,4 @@
 import logging
-from random import random
 
 try:
     from ataka.common.database.models import FlagStatus
@@ -44,6 +43,8 @@ except ImportError as e:
         # be working. Flags that are rejected might be sent again!
         SERVICEBROKEN = 'servicebroken'
 
+# Ataka Host Domain / IP
+ATAKA_HOST = 'api.ataka.local'
 
 # Our own host
 OWN_HOST = ''
@@ -114,10 +115,7 @@ RESPONSES = {
 
 
 def submit_flags(flags):
-    if(random() > 0.5):
-        return [FlagStatus.OK for flag in flags]
-    else:
-        return [FlagStatus.INVALID for flag in flags]
+    return [FlagStatus.OK for flag in flags]
 
 
 """
@@ -150,3 +148,7 @@ def submit_flags(flags):
         logger.error("Exception during flag submission: {} -> {}".format(str(r.status_code), str(r.text)))
         return FlagStatus.ERROR
 """
+
+
+def scrape_scoreboard():
+    return []

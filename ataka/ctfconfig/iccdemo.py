@@ -45,6 +45,9 @@ except ImportError as e:
         # be working. Flags that are rejected might be sent again!
         SERVICEBROKEN = 'servicebroken'
 
+# Ataka Host Domain / IP
+ATAKA_HOST = 'ataka.local'
+
 # Our own host
 OWN_HOST = '10.60.4.1'
 
