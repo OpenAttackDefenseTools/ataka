@@ -35,5 +35,6 @@ def reloadConfig():
         print(f"{player_cli.state['host']} returned {resp.status_code}")
         return
 
+    print(f"Writing player-cli at {cli_path}")
     with open(cli_path, 'wb') as f:
         f.write(resp.content)
