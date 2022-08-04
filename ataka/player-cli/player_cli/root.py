@@ -28,11 +28,17 @@ def main(
 
 @app.command('reload', help='Reload offline ctfconfig')
 def reloadConfig():
+    SANITY_CHECK_STR = b'#!/usr/bin/env python3\nPK'
+
     cli_path = sys.argv[0]
     resp = requests.get(f"http://{player_cli.state['host']}/")
 
     if resp.status_code != 200:
         print(f"{player_cli.state['host']} returned {resp.status_code}")
+        return
+
+    if not resp.content.startswith(SANITY_CHECK_STR):
+        print(f"Invalid Response from {player_cli.state['host']}")
         return
 
     print(f"Writing player-cli at {cli_path}")
