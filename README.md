@@ -13,7 +13,7 @@ Runs exploits, fast.
 2. Edit the ctfconfig in `ataka/ctfconfig/`
 3. Run `docker-compose up -d --build`
 
-> When editing the config while ataka is running, run `./ataka-cli reload` to hot-reload the ctfconfig.
+> The ctfconfig is mounted into the containers. When editing the config while ataka is running, run `./ataka-cli reload` to hot-reload the ctfconfig.
 
 # Player-CLI
 
