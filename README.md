@@ -7,7 +7,7 @@ Runs exploits, fast.
 # Server
 
 1. Edit `.env` file to set:
-    - **DATA_STORE**: Path to a folder to store player exploit related files.
+    - **DATA_STORE**: **Absolute** path to a folder to store player exploit related files.
     - **USERID**: The user that has access to the data directory and has access to the docker socket.
     - **CTF**: The name of the ctfconfig to use.
 2. Edit the ctfconfig in `ataka/ctfconfig/`
