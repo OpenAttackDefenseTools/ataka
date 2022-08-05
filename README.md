@@ -24,12 +24,7 @@ The player-cli is a tool written in python to help players interact with *ataka*
 The player-cli is a `.pyz` file (Python Zipped Executable).
 
 > This only needs to be done once.
-> As of now the player-cli **does not** ship with the dependencies installed.
 
-- Install the two dependencies requeired by the player-cli
-```bash
-python3 -m pip install typer requests
-```
 - Download the ataka-player-cli through a get request to port 8000 of the api container.
 - Save that in a known location (`~/.local/bin/atk`).
 - Mark as excecutable

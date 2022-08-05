@@ -3,12 +3,9 @@ from importlib import import_module, reload
 import logging
 import traceback
 import functools
-import os
-import zipapp
-import shutil
+from subprocess import Popen
 
 from ataka.common.queue import get_channel, ControlQueue, ControlAction, ControlMessage
-
 
 def catch(default = None):
     def decorator(func):
@@ -23,7 +20,6 @@ def catch(default = None):
         return wrapper
     return decorator
 
-
 # A wrapper that loads the specified ctf by name, and wraps the api with support
 # for hot-reload and provides a few convenience functions
 class CTF:
@@ -33,18 +29,7 @@ class CTF:
 
     def packagePlayerCLI(self):
          print("Packaging player-cli")
-         configPath = os.path.join("/ataka/ctfconfig/", f"{os.getenv('CTF')}.py")
-         shutil.copyfile(configPath, "/ataka/player-cli/player_cli/ctfconfig.py")
-
-         # delete old player-cli
-         shutil.rmtree("/ataka/player_cli/ataka-player-cli.pyz", ignore_errors=True)
-
-         zipapp.create_archive(
-                 source="/ataka/player-cli",
-                 interpreter="/usr/bin/env python3",
-                 target="/ataka/player-cli/ataka-player-cli.pyz"
-         )
-
+         Popen(['/ataka/player-cli/package_player_cli.sh'])
 
     async def watch_for_reload(self):
         async with await get_channel() as channel:
