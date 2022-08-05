@@ -8,7 +8,7 @@ Runs exploits, fast.
 
 1. Edit `.env` file to set:
     - **DATA_STORE**: **Absolute** path to a folder to store player exploit related files.
-    - **USERID**: The user that has access to the data directory and has access to the docker socket.
+    - **USERID**: The `user:group` id tuple to use for ataka. Note that write access write access to both the docker socket and the data directory has to be provided. You'll want to set this to the user id of the owner of the data directory and the group id of the `docker` group.
     - **CTF**: The name of the ctfconfig to use.
 2. Edit the ctfconfig in `ataka/ctfconfig/`
 3. Run `docker-compose up -d --build`
