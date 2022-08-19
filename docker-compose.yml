@@ -53,8 +53,6 @@ services:
     volumes:
       - ${DATA_STORE}/shared:/data/shared:rw,z
       - ${DATA_STORE}/exploits:/data/exploits:rw,z
-      - ./ataka/player-cli:/ataka/player-cli:ro
-      - ./ataka/api:/ataka/api
     expose:
       - "8000"
     security_opt:
@@ -98,7 +96,7 @@ services:
       dockerfile: ataka/ctfcode/Dockerfile
     volumes:
       - ./ataka/ctfconfig:/ataka/ctfconfig:ro
-      - ./ataka/player-cli:/ataka/player-cli:rw,z
+      - ./ataka/player-cli:/ataka/player-cli:ro
       - ${DATA_STORE}/shared:/data/shared:rw,z
     security_opt:
       - label:disable
