@@ -55,7 +55,7 @@ def get_channel():
 
 @app.get("/")
 async def get_playercli(session: Session = Depends(get_session)):
-    return FileResponse(path="/ataka/player-cli/ataka-player-cli.pyz", filename="ataka-player-cli.pyz")
+    return FileResponse(path="/data/shared/ataka-player-cli.pyz", filename="ataka-player-cli.pyz")
 
 @app.get("/api/targets")
 async def all_targets(session: Session = Depends(get_session)):

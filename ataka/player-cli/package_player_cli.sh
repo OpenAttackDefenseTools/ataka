@@ -12,4 +12,4 @@ cd "$TMPFILE"
 cp -r /ataka/player-cli .
 cp "/ataka/ctfconfig/$CTF.py" player-cli/player_cli/ctfconfig.py
 pip install -r player-cli/requirements.txt --target player-cli/
-python -m zipapp --python "/usr/bin/env python3" --output /ataka/player-cli/ataka-player-cli.pyz player-cli/
+python -m zipapp --python "/usr/bin/env python3" --output /data/shared/ataka-player-cli.pyz player-cli/
