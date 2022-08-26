@@ -4,6 +4,7 @@ Runs exploits, fast.
 
 > See `.env` variable for ctf selection. See ataka/ctfconfig/ for ctf config code. This directory is mounted into the docker container, not copied. Edits can be applied via hot-reload.
 
+> Check out [the cheat sheet file](CHEAT-SHEET.md) for the most important commands as a quick TL;DR after installing
 # Server
 
 1. Edit `.env` file to set:
