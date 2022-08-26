@@ -4,6 +4,7 @@ The most important commands are listed below:
 
 Submit flag manually:
 `atk flag submit FLAG{N0WAYAAAAAAAAAAAAAAAAAAAAAAAAAB}`
+Or simply `atk flag submit <ENTER> <PASTE output / flags> <CTRL-D>`
 
 Update config:
 `atk reload`
