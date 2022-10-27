@@ -28,9 +28,13 @@ class Flags:
                         async for message in flag_queue.wait_for_messages(timeout=ratelimit):
                             flag_id = message.flag_id
                             flag = message.flag
-                            #print(f"Got flag {flag}")
+                            # print(f"Got flag {flag}")
 
-                            check_duplicates = select(Flag).where(Flag.id != flag_id).where(Flag.flag == flag).limit(1)
+                            check_duplicates = select(Flag) \
+                                .where(Flag.id != flag_id) \
+                                .where(Flag.flag == flag) \
+                                .where((Flag.status == FlagStatus.OK) | (Flag.status == FlagStatus.DUPLICATE)) \
+                                .limit(1)
                             duplicate = (await session.execute(check_duplicates)).scalars().first()
 
                             get_flag = select(Flag).where(Flag.id == flag_id)
@@ -48,7 +52,8 @@ class Flags:
                             await session.commit()
 
                             for flag in dupe_list:
-                                await flag_notify_queue.send_message(FlagNotifyMessage(flag.id, flag.manual_id, flag.execution_id))
+                                await flag_notify_queue.send_message(
+                                    FlagNotifyMessage(flag.id, flag.manual_id, flag.execution_id))
 
                             if len(submitlist) >= batchsize:
                                 break
@@ -64,7 +69,8 @@ class Flags:
                         await session.commit()
 
                         for flag in submitlist:
-                            await flag_notify_queue.send_message(FlagNotifyMessage(flag.id, flag.manual_id, flag.execution_id))
+                            await flag_notify_queue.send_message(
+                                FlagNotifyMessage(flag.id, flag.manual_id, flag.execution_id))
 
                         await sleep(ratelimit)
                     else:
