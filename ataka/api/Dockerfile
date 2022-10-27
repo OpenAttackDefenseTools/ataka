@@ -12,10 +12,11 @@ COPY ataka/common /ataka/common
 
 VOLUME /data/shared
 VOLUME /data/exploits
-VOLUME /ataka/player-cli
 
 COPY ataka/api/requirements.txt /ataka/api/
 RUN pip install --no-cache-dir -r /ataka/api/requirements.txt
 COPY ataka/api /ataka/api
+
+VOLUME /ataka/api
 
 CMD [ "bash", "/ataka/common/delayed_start.sh", "--", "python", "-m", "uvicorn", "--reload", "--host", "0.0.0.0", "ataka.api:app"]

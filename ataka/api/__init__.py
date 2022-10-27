@@ -8,21 +8,19 @@ import re
 from asyncio import CancelledError
 
 from typing import Set
-from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Depends
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload, Session
 from sqlalchemy.exc import IntegrityError, NoResultFound
-from websockets.exceptions import ConnectionClosedOK
 
 from ataka.common import queue, database
 from ataka.common.database.models import Job, Target, Flag, Execution, ExploitHistory, Exploit, Exclusion
 from ataka.common.queue.output import OutputMessage, OutputQueue
 from ataka.api.schemas import FlagSubmission
 from ataka.api.state import GlobalState
-from ataka.api.websocket_handlers import handle_incoming, handle_websocket_connection
 
 app = FastAPI()
 state: GlobalState
@@ -53,9 +51,11 @@ async def get_session():
 def get_channel():
     return state.global_channel
 
+
 @app.get("/")
 async def get_playercli(session: Session = Depends(get_session)):
     return FileResponse(path="/data/shared/ataka-player-cli.pyz", filename="ataka-player-cli.pyz")
+
 
 @app.get("/api/targets")
 async def all_targets(session: Session = Depends(get_session)):
@@ -201,8 +201,8 @@ async def exploit_history_create(req: ExploitHistoryCreateRequest,
 
 @app.get("/api/exploit_history/{history_id}/exclusions")
 async def exploit_history_get_exclusions(
-    history_id: str,
-    session: Session = Depends(get_session)
+        history_id: str,
+        session: Session = Depends(get_session)
 ):
     get_history = select(ExploitHistory) \
         .where(ExploitHistory.id == history_id) \
@@ -225,9 +225,9 @@ class ExclusionsPutRequest(BaseModel):
 
 @app.put("/api/exploit_history/{history_id}/exclusions")
 async def exploit_history_put_exclusions(
-    history_id: str,
-    req: ExclusionsPutRequest,
-    session: Session = Depends(get_session)
+        history_id: str,
+        req: ExclusionsPutRequest,
+        session: Session = Depends(get_session)
 ):
     get_history = select(ExploitHistory) \
         .where(ExploitHistory.id == history_id) \
@@ -254,6 +254,7 @@ async def exploit_history_put_exclusions(
         raise
 
     return {"success": True, "error": ""}
+
 
 @app.get("/api/exploit")
 async def exploit_all(session: Session = Depends(get_session)):
@@ -341,7 +342,7 @@ async def exploit_jobs(exploit_id: str, limit: int = 1, start: int = 0,
         .order_by(Job.timestamp.desc()) \
         .limit(limit) \
         .options(
-            selectinload(Job.executions).selectinload(Execution.target))
+        selectinload(Job.executions).selectinload(Execution.target))
     jobs = (await session.execute(get_jobs)).scalars()
 
     return [
@@ -368,15 +369,3 @@ async def exploit_download(exploit_id: str,
         data = f.read()
 
     return {"success": True, "error": "", "data": base64.b64encode(data).decode()}
-
-
-@app.websocket("/api/ws")
-async def websocket_endpoint(websocket: WebSocket, channel=Depends(get_channel)):
-    await websocket.accept()
-
-    try:
-        await handle_websocket_connection(websocket, channel)
-    except WebSocketDisconnect:
-        pass
-    except ConnectionClosedOK:
-        pass

@@ -1,5 +1,4 @@
 import asyncio
-import os
 
 from aiodocker import Docker
 

@@ -7,7 +7,8 @@ from subprocess import Popen
 
 from ataka.common.queue import get_channel, ControlQueue, ControlAction, ControlMessage
 
-def catch(default = None):
+
+def catch(default=None):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -17,19 +18,22 @@ def catch(default = None):
                 print(f"Error occurred while accessing CTFCode")
                 logging.error(traceback.format_exc())
                 return default
+
         return wrapper
+
     return decorator
+
 
 # A wrapper that loads the specified ctf by name, and wraps the api with support
 # for hot-reload and provides a few convenience functions
 class CTF:
     def __init__(self, name: str):
         self._module = import_module(f"ataka.ctfconfig.{name}")
-        self.packagePlayerCLI()
+        self.package_player_cli()
 
-    def packagePlayerCLI(self):
-         print("Packaging player-cli")
-         Popen(['/ataka/player-cli/package_player_cli.sh'])
+    def package_player_cli(self):
+        print("Packaging player-cli")
+        Popen(['/ataka/player-cli/package_player_cli.sh'])
 
     async def watch_for_reload(self):
         async with await get_channel() as channel:
@@ -58,7 +62,7 @@ class CTF:
 
     @catch(default=None)
     def reload(self):
-        self.packagePlayerCLI()
+        self.package_player_cli()
 
         print("Reloading ctf code")
         reload(self._module)
