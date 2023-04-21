@@ -44,7 +44,7 @@ except ImportError as e:
         SERVICEBROKEN = 'servicebroken'
 
 # Ataka Host Domain / IP
-ATAKA_HOST = 'ataka.local'
+ATAKA_HOST = 'ataka.h4xx.eu'
 
 # Our own host
 OWN_HOST = ''
