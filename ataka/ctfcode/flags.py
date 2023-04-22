@@ -33,7 +33,7 @@ class Flags:
                             check_duplicates = select(Flag) \
                                 .where(Flag.id != flag_id) \
                                 .where(Flag.flag == flag) \
-                                .where((Flag.status == FlagStatus.OK) | (Flag.status == FlagStatus.DUPLICATE)) \
+                                .where((Flag.status == FlagStatus.OK) | (Flag.status == FlagStatus.DUPLICATE) | (Flag.status == FlagStatus.INACTIVE)) \
                                 .limit(1)
                             duplicate = (await session.execute(check_duplicates)).scalars().first()
 
