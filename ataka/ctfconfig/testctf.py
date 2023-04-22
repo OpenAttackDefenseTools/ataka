@@ -49,7 +49,7 @@ ATAKA_HOST = 'ataka.local'
 # Our own host
 OWN_HOST = ''
 
-RUNLOCAL_TARGETS = []
+RUNLOCAL_TARGETS = ["10.99.0.2"]
 
 # Config for framework
 ROUND_TIME = 10
