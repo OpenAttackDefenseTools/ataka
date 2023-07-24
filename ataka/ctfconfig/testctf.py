@@ -22,7 +22,7 @@ FLAG_BATCHSIZE = 100
 FLAG_RATELIMIT = 0.5  # Wait in seconds between each call of submit_flags()
 
 # When the CTF starts
-START_TIME = 1644859882
+START_TIME = 1690227547
 
 
 ### END EXPORTED CONFIG

@@ -1,6 +1,7 @@
 import os
 import base64
 import binascii
+import time
 from datetime import datetime
 
 import asyncio
@@ -13,12 +14,15 @@ from fastapi import FastAPI, Depends
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import func
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload, Session
+from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError, NoResultFound
 
 from ataka.common import queue, database
-from ataka.common.database.models import Job, Target, Flag, Execution, ExploitHistory, Exploit, Exclusion
+from ataka.common.database.models import Job, Target, Flag, Execution, ExploitHistory, Exploit, Exclusion, \
+    JobExecutionStatus
+from ataka.common.queue import JobMessage, JobAction, JobQueue
 from ataka.common.queue.output import OutputMessage, OutputQueue
 from ataka.api.schemas import FlagSubmission
 from ataka.api.state import GlobalState
@@ -54,12 +58,12 @@ def get_channel():
 
 
 @app.get("/")
-async def get_playercli(session: Session = Depends(get_session)):
+async def get_playercli(session: AsyncSession = Depends(get_session)):
     return FileResponse(path="/data/shared/ataka-player-cli.pyz", filename="ataka-player-cli.pyz")
 
 
 @app.get("/api/targets")
-async def all_targets(session: Session = Depends(get_session)):
+async def all_targets(session: AsyncSession = Depends(get_session)):
     get_max_version = select(func.max(Target.version))
     version = (await session.execute(get_max_version)).scalar_one()
 
@@ -71,7 +75,7 @@ async def all_targets(session: Session = Depends(get_session)):
 
 
 @app.get("/api/targets/service/{service_name}")
-async def targets_by_service(service_name, session: Session = Depends(get_session)):
+async def targets_by_service(service_name, session: AsyncSession = Depends(get_session)):
     get_max_version = select(func.max(Target.version))
     version = (await session.execute(get_max_version)).scalar_one()
 
@@ -83,7 +87,7 @@ async def targets_by_service(service_name, session: Session = Depends(get_sessio
 
 
 @app.get("/api/targets/ip/{ip_addr}")
-async def targets_by_ip(ip_addr, session: Session = Depends(get_session)):
+async def targets_by_ip(ip_addr, session: AsyncSession = Depends(get_session)):
     get_max_version = select(func.max(Target.version))
     version = (await session.execute(get_max_version)).scalar_one()
 
@@ -95,7 +99,7 @@ async def targets_by_ip(ip_addr, session: Session = Depends(get_session)):
 
 
 @app.get("/api/jobs")
-async def all_jobs(session: Session = Depends(get_session)):
+async def all_jobs(session: AsyncSession = Depends(get_session)):
     get_jobs = select(Job)
     job_objs = (await session.execute(get_jobs)).scalars()
     jobs = [x.to_dict() for x in job_objs]
@@ -103,19 +107,26 @@ async def all_jobs(session: Session = Depends(get_session)):
     return jobs
 
 
-@app.get("/api/job/{job_id}/status")
-async def get_job(job_id, session: Session = Depends(get_session)):
-    get_jobs = select(Job).where(Job.id == job_id).limit(1)
-    job_obj = (await session.execute(get_jobs)).scalar_one()
+@app.get("/api/jobs/{job_id}")
+async def get_job(job_id: int, session: AsyncSession = Depends(get_session)):
 
-    return job_obj.to_dict()
+    get_job = select(Job) \
+        .where(Job.id == job_id) \
+        .options(selectinload(Job.executions).selectinload(Execution.target))
+    job = (await session.execute(get_job)).scalar_one()
 
+    return {
+        "success": True,
+        "error": "",
+        "job": job.to_dict(),
+        "executions": [x.to_dict() | {"target": x.target.to_dict()} for x in job.executions],
+    }
 
 @app.get("/api/flags")
 async def all_flags(
-    start: datetime | None = None,
-    stop: datetime | None = None,
-    session: Session = Depends(get_session),
+        start: datetime | None = None,
+        stop: datetime | None = None,
+        session: AsyncSession = Depends(get_session),
 ):
     get_flags = select(Flag, Execution, Target, Job, Exploit)
 
@@ -162,7 +173,7 @@ async def get_init_data():
 
 
 @app.post("/api/flag/submit")
-async def submit_flag(submission: FlagSubmission, session: Session = Depends(get_session),
+async def submit_flag(submission: FlagSubmission, session: AsyncSession = Depends(get_session),
                       channel=Depends(get_channel)):
     expected_flags = len(re.findall(state.ctf_config["flag_regex"], submission.flags))
 
@@ -202,7 +213,7 @@ async def submit_flag(submission: FlagSubmission, session: Session = Depends(get
 
 
 @app.get("/api/exploit_history")
-async def exploit_history_list(session: Session = Depends(get_session)):
+async def exploit_history_list(session: AsyncSession = Depends(get_session)):
     get_histories = select(ExploitHistory)
     histories = (await session.execute(get_histories)).scalars()
     return [x.to_dict() for x in histories]
@@ -215,7 +226,7 @@ class ExploitHistoryCreateRequest(BaseModel):
 
 @app.post("/api/exploit_history")
 async def exploit_history_create(req: ExploitHistoryCreateRequest,
-                                 session: Session = Depends(get_session)):
+                                 session: AsyncSession = Depends(get_session)):
     if state.ctf_config is None or req.service not in state.ctf_config["services"]:
         return {"success": False, "error": "Unknown service"}
 
@@ -228,13 +239,14 @@ async def exploit_history_create(req: ExploitHistoryCreateRequest,
 
     return {"success": True, "error": ""}
 
+
 @app.get("/api/exploit_history/{history_id}")
 async def exploit_history_get(
         history_id: str,
-        session: Session = Depends(get_session)
+        session: AsyncSession = Depends(get_session)
 ):
     get_history = select(ExploitHistory) \
-        .where(ExploitHistory.id == history_id);
+        .where(ExploitHistory.id == history_id)
     try:
         history = (await session.execute(get_history)).scalar_one()
     except NoResultFound:
@@ -250,7 +262,7 @@ async def exploit_history_get(
 @app.get("/api/exploit_history/{history_id}/exclusions")
 async def exploit_history_get_exclusions(
         history_id: str,
-        session: Session = Depends(get_session)
+        session: AsyncSession = Depends(get_session)
 ):
     get_history = select(ExploitHistory) \
         .where(ExploitHistory.id == history_id) \
@@ -275,7 +287,7 @@ class ExclusionsPutRequest(BaseModel):
 async def exploit_history_put_exclusions(
         history_id: str,
         req: ExclusionsPutRequest,
-        session: Session = Depends(get_session)
+        session: AsyncSession = Depends(get_session)
 ):
     get_history = select(ExploitHistory) \
         .where(ExploitHistory.id == history_id) \
@@ -287,7 +299,7 @@ async def exploit_history_put_exclusions(
 
     cur_ips = set(x.target_ip for x in history.exclusions)
 
-    session.begin()
+    await session.begin()
     try:
         for ip in req.target_ips:
             if ip not in cur_ips:
@@ -305,7 +317,7 @@ async def exploit_history_put_exclusions(
 
 
 @app.get("/api/exploit")
-async def exploit_all(session: Session = Depends(get_session)):
+async def exploit_all(session: AsyncSession = Depends(get_session)):
     get_exploits = select(Exploit)
     exploits = (await session.execute(get_exploits)).scalars()
     return [x.to_dict() for x in exploits]
@@ -319,7 +331,8 @@ class ExploitCreateRequest(BaseModel):
 
 @app.post("/api/exploit")
 async def exploit_create(req: ExploitCreateRequest,
-                         session: Session = Depends(get_session)):
+                         session: AsyncSession = Depends(get_session),
+                         channel=Depends(get_channel)):
     try:
         context = base64.b64decode(req.context)
     except binascii.Error:
@@ -327,7 +340,8 @@ async def exploit_create(req: ExploitCreateRequest,
 
     get_history = select(ExploitHistory) \
         .where(ExploitHistory.id == req.history_id) \
-        .options(selectinload(ExploitHistory.exploits))
+        .options(selectinload(ExploitHistory.exploits),
+                 selectinload(ExploitHistory.exclusions))
     try:
         history = (await session.execute(get_history)).scalar_one()
     except NoResultFound:
@@ -360,7 +374,26 @@ async def exploit_create(req: ExploitCreateRequest,
     except IntegrityError:
         return {"success": False, "error": "Exploit already exists (db)"}
 
-    return {"success": True, "error": "", "exploit_id": exploit_id}
+    job_obj = Job(status=JobExecutionStatus.QUEUED,
+                  timeout=datetime.fromtimestamp(time.time() + state.ctf_config['round_time']),
+                  exploit=exploit)
+
+    get_max_version = select(func.max(Target.version))
+    version = (await session.execute(get_max_version)).scalar_one()
+
+    get_targets = select(Target).where((Target.version == version) &
+                                       (Target.service == history.service) &
+                                       (Target.ip.in_(state.ctf_config['runlocal_targets'])))
+    target_objs = (await session.execute(get_targets)).scalars()
+
+    session.add(job_obj)
+    session.add_all([Execution(job=job_obj, target=t, status=JobExecutionStatus.QUEUED) for t in target_objs])
+    await session.commit()
+
+    job_queue = await JobQueue.get(channel)
+    await job_queue.send_message(JobMessage(action=JobAction.QUEUE, job_id=job_obj.id))
+
+    return {"success": True, "error": "", "exploit_id": exploit_id, "job_id": job_obj.id}
 
 
 class ExploitPatchRequest(BaseModel):
@@ -369,7 +402,7 @@ class ExploitPatchRequest(BaseModel):
 
 @app.patch("/api/exploit/{exploit_id}")
 async def exploit_patch(exploit_id: str, req: ExploitPatchRequest,
-                        session: Session = Depends(get_session)):
+                        session: AsyncSession = Depends(get_session)):
     get_exploit = select(Exploit).where(Exploit.id == exploit_id)
     try:
         exploit = (await session.execute(get_exploit)).scalar_one()
@@ -384,7 +417,7 @@ async def exploit_patch(exploit_id: str, req: ExploitPatchRequest,
 
 @app.get("/api/exploit/{exploit_id}/jobs")
 async def exploit_jobs(exploit_id: str, limit: int = 1, start: int = 0,
-                       session: Session = Depends(get_session)):
+                       session: AsyncSession = Depends(get_session)):
     get_jobs = select(Job) \
         .where((Job.exploit_id == exploit_id) & (Job.id >= start)) \
         .order_by(Job.timestamp.desc()) \
@@ -396,16 +429,14 @@ async def exploit_jobs(exploit_id: str, limit: int = 1, start: int = 0,
     return [
         {
             "job": job.to_dict(),
-            "executions": [x.to_dict() for x in job.executions],
-            "targets": [x.target.to_dict() for x in job.executions],
+            "executions": [x.to_dict() | {"target": x.target.to_dict()} for x in job.executions],
         }
         for job in jobs
     ]
 
-
 @app.get("/api/exploit/{exploit_id}/download")
 async def exploit_download(exploit_id: str,
-                           session: Session = Depends(get_session)):
+                           session: AsyncSession = Depends(get_session)):
     get_exploit = select(Exploit).where(Exploit.id == exploit_id)
     try:
         (await session.execute(get_exploit)).scalar_one()

@@ -23,7 +23,7 @@ class Jobs:
     def __init__(self, docker, exploits):
         self._docker = docker
         self._exploits = exploits
-        self._jobs = []
+        self._jobs = {}
 
     async def poll_and_run_jobs(self):
         async with await get_channel() as channel:
@@ -32,19 +32,28 @@ class Jobs:
             async for job_message in job_queue.wait_for_messages():
                 match job_message.action:
                     case JobAction.CANCEL:
-                        # TODO: do
-                        pass
+                        print(f"DEBUG: CURRENTLY RUNNING {len(self._jobs)}")
+                        result = [(task, job) for task, job in self._jobs.items() if job.id == job_message.job_id]
+                        if len(result) > 0:
+                            task, job = result[0]
+                            await task.cancel()
                     case JobAction.QUEUE:
                         job_execution = JobExecution(self._docker, self._exploits, channel, job_message.job_id)
-                        self._jobs += [asyncio.create_task(job_execution.run())]
+                        task = asyncio.create_task(job_execution.run())
+
+                        def on_done(job):
+                            del self._jobs[job]
+
+                        self._jobs[task] = job_execution
+                        task.add_done_callback(on_done)
 
 
 class JobExecution:
     def __init__(self, docker, exploits, channel, job_id: int):
+        self.id = job_id
         self._docker = docker
         self._exploits = exploits
         self._channel = channel
-        self._job_id = job_id
         self._data_store = os.environ["DATA_STORE"]
 
     async def run(self):
@@ -80,9 +89,14 @@ class JobExecution:
                                                                             })
 
             await container_ref.start()
-        except (DockerError, Exception) as e:
-            print(e)
-            raise e
+        except DockerError as exception:
+            print(f"Got docker error {exception}")
+            print(f"   {exploit}")
+            for e in job.executions:
+                e.status = JobExecutionStatus.FAILED
+                e.stderr = str(exception)
+            await self.submit_to_database(job.executions)
+            raise exception
 
         execute_tasks = [self.docker_execute(container_ref, e) for e in job.executions]
 
@@ -99,9 +113,9 @@ class JobExecution:
 
     async def fetch_job_from_database(self) -> Optional[LocalJob]:
         async with database.get_session() as session:
-            get_job = select(Job).where(Job.id == self._job_id)
+            get_job = select(Job).where(Job.id == self.id)
             job = (await session.execute(get_job)).scalar_one()
-            get_executions = select(Execution).where(Execution.job_id == self._job_id) \
+            get_executions = select(Execution).where(Execution.job_id == self.id) \
                 .options(selectinload(Execution.target))
             executions = (await session.execute(get_executions)).scalars()
 
@@ -109,18 +123,18 @@ class JobExecution:
                 job.status = JobExecutionStatus.TIMEOUT
                 for e in executions:
                     e.status = JobExecutionStatus.TIMEOUT
+                    e.stderr = "<EXECUTOR TIMEOUT HAPPENED>"
                 await session.commit()
-                # todo: handle timeout
                 return None
 
             exploit = await self._exploits.ensure_exploit(job.exploit_id)
-            # TODO: deal with this
             if exploit.status is not LocalExploitStatus.FINISHED:
                 print(f"Got error exploit {exploit.build_output}")
                 print(f"   {exploit}")
                 job.status = JobExecutionStatus.FAILED
                 for e in executions:
                     e.status = JobExecutionStatus.FAILED
+                    e.stderr = exploit.build_output
                 await session.commit()
                 return None
 
@@ -138,14 +152,17 @@ class JobExecution:
 
     async def submit_to_database(self, results: [LocalExecution]):
         local_executions = {e.database_id: e for e in results}
+        status = JobExecutionStatus.FAILED if any([e.status == JobExecutionStatus.FAILED for e in results]) \
+            else JobExecutionStatus.CANCELLED if any([e.status == JobExecutionStatus.CANCELLED for e in results]) \
+            else JobExecutionStatus.FINISHED
 
         # submit results to database
         async with database.get_session() as session:
-            get_job = select(Job).where(Job.id == self._job_id)
+            get_job = select(Job).where(Job.id == self.id)
             job = (await session.execute(get_job)).scalar_one()
-            job.status = LocalExploitStatus.FINISHED
+            job.status = status
 
-            get_executions = select(Execution).where(Execution.job_id == self._job_id) \
+            get_executions = select(Execution).where(Execution.job_id == self.id) \
                 .options(selectinload(Execution.target))
             executions = (await session.execute(get_executions)).scalars()
 
@@ -172,7 +189,11 @@ class JobExecution:
 
                         yield message[0], message[1].decode()
             except DockerError as e:
-                yield 2, f"DOCKER EXECUTION ERROR: {e.message}"
+                msg = f"DOCKER EXECUTION ERROR: {e.message}"
+                execution.status = JobExecutionStatus.FAILED
+                execution.stderr += msg
+                yield 2, msg
+
 
         output_queue = await OutputQueue.get(self._channel)
 
@@ -185,5 +206,6 @@ class JobExecution:
                     execution.stderr += output
 
             await output_queue.send_message(OutputMessage(None, execution.database_id, stream == 1, output))
-        execution.status = JobExecutionStatus.FINISHED
+        if execution.status in [JobExecutionStatus.QUEUED, JobExecutionStatus.RUNNING]:
+            execution.status = JobExecutionStatus.FINISHED
         return execution

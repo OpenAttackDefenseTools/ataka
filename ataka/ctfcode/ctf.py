@@ -58,6 +58,7 @@ class CTF:
                                                                    "round_time": self.get_round_time(),
                                                                    "flag_regex": self.get_flag_regex()[0],
                                                                    "services": self.get_services(),
+                                                                   "runlocal_targets": self.get_runlocal_targets(),
                                                                }))
 
     @catch(default=None)
@@ -109,3 +110,7 @@ class CTF:
     @catch(default=[])
     def submit_flags(self, flags):
         return self._module.submit_flags(flags)
+
+    @catch(default=[])
+    def get_runlocal_targets(self):
+        return self._module.RUNLOCAL_TARGETS
