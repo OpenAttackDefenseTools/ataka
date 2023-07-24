@@ -3,6 +3,9 @@ state = {
     'bypass_tools': None,
 }
 
+import os
+self_as_zip_path = os.path.dirname(os.path.dirname(__file__))
+
 import player_cli.ctfconfig_wrapper
 
 import player_cli.cmd_exploit
