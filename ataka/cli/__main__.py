@@ -3,7 +3,7 @@ from functools import update_wrapper
 from typing import List
 
 import typer
-from pamqp.specification import Basic
+from pamqp.commands import Basic
 
 from ataka.common import queue, database
 from ataka.common.database.models import Flag, FlagStatus
