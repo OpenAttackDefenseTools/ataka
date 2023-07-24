@@ -31,10 +31,14 @@ class TargetJobGenerator:
                     await job_queue.send_message(JobMessage(action=JobAction.CANCEL, job_id=job.id))
 
             while True:
+                if (sleep_duration := self._ctf.get_start_time() - time.time()) > 0:
+                    print(f"CTF not started yet, sleeping for {int(sleep_duration)} seconds...")
+                    await sleep(min(self._ctf.get_round_time(), sleep_duration))
+                    continue
+
                 print("New tick")
                 services = self._ctf.get_services()
                 all_targets = self._ctf.get_targets()
-                round_time = self._ctf.get_round_time()
 
                 async with database.get_session() as session:
                     next_version = await session.execute(Target.version_seq)
