@@ -7,6 +7,7 @@ version: '3'
 services:
   rabbitmq:
     image: rabbitmq:3.9-management-alpine
+    restart: always
     expose:
       - "15672"
       - "5672"
@@ -21,6 +22,7 @@ services:
 
   postgres:
     image: postgres:14-alpine
+    restart: always
     hostname: ataka-postgres
     ports:
       - "5432:5432"
@@ -34,6 +36,7 @@ services:
 
   adminer:
     image: adminer:latest
+    restart: always
     ports:
       - "8080:8080"
     hostname: ataka-adminer
@@ -44,6 +47,7 @@ services:
 
   api:
     image: openattackdefensetools/ataka-api
+    restart: always
     init: true
     user: $USERID
     build:
@@ -69,6 +73,7 @@ services:
 
   executor:
     image: openattackdefensetools/ataka-executor
+    restart: always
     init: true
     user: $USERID
     build:
@@ -92,6 +97,7 @@ services:
 
   ctfcode:
     image: openattackdefensetools/ataka-ctfcode
+    restart: always
     init: true
     user: $USERID
     build:
@@ -115,6 +121,7 @@ services:
 
   cli:
     image: openattackdefensetools/ataka-cli
+    restart: always
     init: true
     user: $USERID
     build:
