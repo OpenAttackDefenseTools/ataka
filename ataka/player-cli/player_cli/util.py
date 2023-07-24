@@ -1,5 +1,7 @@
 import os
 import time
+import pkgutil
+import string
 import typer
 import requests
 import player_cli
@@ -109,3 +111,15 @@ def parse_dockerfile_cmd(content):
             exec_args = args
 
     return exec_args
+
+def load_template_file(filename: str, templates: dict[str, str]) -> str:
+        template_content = pkgutil.get_data(__name__, filename) 
+        try:
+            template_string = template_content.decode()
+        except UnicodeDecodeError:
+            typeVr.echo(
+                f'{ERROR_STR}: The template {filename} contained undecodable characters'
+            )
+            raise typer.Exit(code=1)
+
+        return string.Template(template_string).substitute(templates)
