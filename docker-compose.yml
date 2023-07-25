@@ -8,6 +8,7 @@ services:
   rabbitmq:
     image: rabbitmq:3.9-management-alpine
     restart: always
+    init: true
     expose:
       - "15672"
       - "5672"
@@ -23,6 +24,7 @@ services:
   postgres:
     image: postgres:14-alpine
     restart: always
+    init: true
     hostname: ataka-postgres
     ports:
       - "5432:5432"
