@@ -4,10 +4,10 @@ import enum
 class FlagStatus(str, enum.Enum):
     UNKNOWN = 'unknown'
 
-    # everything is fine
+    # Flag yielded points
     OK = 'ok'
 
-    # Flag is currently being submitted
+    # Flag is in queue for submission
     QUEUED = 'queued'
 
     # Flag is currently being submitted
@@ -28,8 +28,7 @@ class FlagStatus(str, enum.Enum):
     # we tried to submit our own flag and the submission system lets us know
     OWNFLAG = 'ownflag'
 
-    # the flag is not longer active. This is used if a flags are restricted to a
-    # specific time frame
+    # the flag is not longer active. This is used if a flags expire
     INACTIVE = 'inactive'
 
     # flag fits the format and could be sent to the submission system, but the
