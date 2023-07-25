@@ -19,7 +19,7 @@ FLAG_REGEX = r"[A-Z0-9]{31}=", 0
 
 FLAG_BATCHSIZE = 100
 
-FLAG_RATELIMIT = 0.5  # Wait in seconds between each call of submit_flags()
+FLAG_RATELIMIT = 1  # Wait in seconds between each call of submit_flags()
 
 # When the CTF starts
 START_TIME = 1690227547
@@ -44,13 +44,12 @@ def _randomness():
     import random
     return \
         random.choices([FlagStatus.OK, FlagStatus.INVALID, FlagStatus.INACTIVE, FlagStatus.OWNFLAG, FlagStatus.ERROR],
-                       weights=[0.5, 0.2, 0.2, 0.05, 0.05], k=1)[0]
+                       weights=[0.5, 0.2, 0.2, 0.05, 0.1], k=1)[0]
 
 
 def submit_flags(flags):
-    try:
-        import time
-        time.sleep(len(flags) / 100)
-        return [FlagStatus.DUPLICATE if flag in submitted_flags else _randomness() for flag in flags]
-    finally:
-        submitted_flags.update(flags)
+    import time
+    time.sleep(min(len(flags) / 1000, 2))
+    result = {flag: FlagStatus.DUPLICATE if flag in submitted_flags else _randomness() for flag in flags}
+    submitted_flags.update([flag for flag, status in result.items() if status != FlagStatus.ERROR])
+    return [result[flag] for flag in flags]
