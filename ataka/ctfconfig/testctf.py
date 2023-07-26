@@ -1,3 +1,5 @@
+import json
+
 from ataka.common.flag_status import FlagStatus
 
 ### EXPORTED CONFIG
@@ -33,8 +35,25 @@ def get_services():
 
 
 def get_targets():
-    extra = '["1234", "5678"]'
-    return {service: [{"ip": f"10.99.{i}.2", "extra": extra} for i in range(3)] for service in get_services()}
+    services = get_services()
+
+    default_targets = {service: {f"10.99.{i}.2": ["1234", "5678"] for i in range(3)} for service in services}
+
+    # remote fetch here
+    flag_ids = default_targets
+
+    targets = {
+        service: [
+            {
+                "ip": ip,
+                "extra": json.dumps(ip_info),
+            }
+            for ip, ip_info in (default_targets[service] | service_info).items()
+        ]
+        for service, service_info in ({service: [] for service in services} | flag_ids).items()
+    }
+
+    return targets
 
 
 submitted_flags = set()
