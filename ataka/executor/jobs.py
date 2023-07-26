@@ -2,6 +2,7 @@ import asyncio
 import math
 import os
 import time
+import traceback
 from typing import Optional
 
 from aiodocker import DockerError
@@ -9,10 +10,9 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload, joinedload
 
 from ataka.common import database
-from ataka.common.database.models import Job, Execution
-from ataka.common.queue import get_channel, JobQueue, JobAction
+from ataka.common.database.models import Job, Execution, Exploit
+from ataka.common.queue import get_channel, JobQueue, JobAction, OutputQueue, OutputMessage
 from .localdata import *
-from ..common.queue.output import OutputQueue, OutputMessage
 
 
 class BuildError(Exception):
@@ -100,8 +100,8 @@ class JobExecution:
 
             await container_ref.start()
         except DockerError as exception:
-            print(f"Got docker error {exception}")
-            print(f"   {exploit}")
+            print(f"Got docker error for exploit {exploit.id} (service {exploit.service}) by {exploit.author}")
+            print(traceback.format_exception(exception))
             for e in job.executions:
                 e.status = JobExecutionStatus.FAILED
                 e.stderr = str(exception)
@@ -109,6 +109,8 @@ class JobExecution:
             raise exception
 
         execute_tasks = [self.docker_execute(container_ref, e) for e in job.executions]
+
+        print(f"Starting {len(execute_tasks)} tasks for exploit {exploit.id} (service {exploit.service}) by {exploit.author}")
 
         # Execute all the exploits
         results = await asyncio.gather(*execute_tasks)
@@ -124,7 +126,7 @@ class JobExecution:
     async def fetch_job_from_database(self) -> Optional[LocalJob]:
         async with database.get_session() as session:
             get_job = select(Job).where(Job.id == self.id).options(
-                joinedload(Job.exploit), joinedload(Job.executions).joinedload(Execution.target)
+                joinedload(Job.exploit).joinedload(Exploit.exploit_history), joinedload(Job.executions).joinedload(Execution.target)
             )
             job = (await session.execute(get_job)).unique().scalar_one()
             executions = job.executions
@@ -139,8 +141,8 @@ class JobExecution:
 
             local_exploit = await self._exploits.ensure_exploit(job.exploit)
             if local_exploit.status is not LocalExploitStatus.FINISHED:
-                print(f"Got error exploit {local_exploit.build_output}")
-                print(f"   {local_exploit}")
+                print(f"Got build error for exploit {local_exploit.id} (service {local_exploit.service}) by {local_exploit.author}")
+                print(f"   {local_exploit.build_output}")
                 job.status = JobExecutionStatus.FAILED
                 for e in executions:
                     e.status = JobExecutionStatus.FAILED
@@ -202,6 +204,9 @@ class JobExecution:
 
                         yield message[0], message[1].decode()
             except DockerError as e:
+                print(f"DOCKER EXECUTION ERROR for {execution.exploit.id} (service {execution.exploit.service}) " \
+                      f"by {execution.exploit.author} against target {execution.target.ip}\n" \
+                      f"{e.message}")
                 msg = f"DOCKER EXECUTION ERROR: {e.message}"
                 execution.status = JobExecutionStatus.FAILED
                 execution.stderr += msg
