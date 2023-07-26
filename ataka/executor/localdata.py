@@ -13,6 +13,8 @@ class LocalExploitStatus(str, Enum):
 @dataclass
 class LocalExploit:
     id: str
+    service: str
+    author: str
     docker_name: str
     status: LocalExploitStatus
     build_output: str = ""
