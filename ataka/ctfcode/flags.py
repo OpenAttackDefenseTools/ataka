@@ -92,7 +92,7 @@ class Flags:
                         last_submit = time.time()
 
                         statuslist = self._ctf.submit_flags([flag.flag for flag in result])
-                        print(f"Done submitting ({statuslist.count(FlagStatus.ERROR)} errored)")
+                        print(f"Done submitting ({statuslist.count(FlagStatus.OK)} ok)")
 
                         for flag, status in zip(result, statuslist):
                             #print(flag.id, flag.flag, status)
