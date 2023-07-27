@@ -2,13 +2,17 @@ import os
 import time
 import typer
 import requests
+from requests import JSONDecodeError
+from rich.text import Text
+
 import player_cli
+from rich import print
 
 from datetime import datetime
 
 
 def colorfy(msg, color):
-    return typer.style(msg, fg=color, bold=True)
+    return f'[bold {color}]{msg}[/bold {color}]'
 
 
 def magentify(msg):
@@ -31,6 +35,7 @@ def yellowfy(msg):
     return colorfy(msg, typer.colors.YELLOW)
 
 
+DEBUG_STR = colorfy('DEBUG', 'bright_yellow')
 ERROR_STR = redify('ERROR')
 WARN_STR = yellowfy('WARNING')
 NOTICE_STR = blueify('NOTICE')
@@ -38,26 +43,44 @@ NOTICE_STR = blueify('NOTICE')
 
 def request(method, endpoint, data=None, params=None):
     if player_cli.state['bypass_tools']:
-        return player_cli.ctfconfig_wrapper.request(method, endpoint, data=data)
+        if player_cli.state['debug']:
+            print(f"{DEBUG_STR}: {method} {endpoint}{'' if params is None else f' with params {params}'}")
+            if data is not None:
+                print(f"{DEBUG_STR}: {data}")
+        print(f"{DEBUG_STR}: ")
+
+        result = player_cli.ctfconfig_wrapper.request(method, endpoint, data=data)
+        if player_cli.state['debug']:
+            print(f"{DEBUG_STR}: {result}")
+        return result
 
     url = f'http://{player_cli.state["host"]}/api/{endpoint}'
+
+    if player_cli.state['debug']:
+        print(f"{DEBUG_STR}: {method} {url}{'' if params is None else f' with params {params}'}")
+        if data is not None:
+            print(f"{DEBUG_STR}: {data}")
+        print(f"{DEBUG_STR}: ")
+
     func = {
         'GET': requests.get,
         'PUT': requests.put,
         'POST': requests.post,
         'PATCH': requests.patch,
     }[method]
-    return func(url, json=data, params=params).json()
+    response = func(url, json=data, params=params)
+    if player_cli.state['debug']:
+        print(f"{DEBUG_STR}: {response.status_code} {response.reason}")
+        print(f"{DEBUG_STR}: {response.json()}")
 
-
-def check_response(resp):
-    if 'success' not in resp:
-        typer.echo(f'{ERROR_STR}: invalid API response: {resp}')
+    if response.status_code != 200:
+        print(f"{ERROR_STR}: {method} {endpoint} returned status code {response.status_code} {response.reason}")
+        try:
+            print(f"{ERROR_STR}: {response.json()}")
+        except JSONDecodeError:
+            print(f"{ERROR_STR}: {response.text}")
         raise typer.Exit(code=1)
-    if not resp['success']:
-        error = resp.get('error', '???')
-        typer.echo(f'{ERROR_STR}: API error: {error}')
-        raise typer.Exit(code=1)
+    return response.json()
 
 
 def dt_from_iso(s):

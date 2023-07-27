@@ -8,7 +8,7 @@ from sqlalchemy import update, select
 from ataka.common import database
 from ataka.common.database.models import Flag
 from ataka.common.flag_status import FlagStatus, DuplicatesDontResubmitFlagStatus
-from ataka.common.queue import FlagQueue, get_channel, FlagMessage, FlagNotifyQueue, FlagNotifyMessage, OutputQueue
+from ataka.common.queue import FlagQueue, get_channel, FlagMessage, OutputQueue
 from .ctf import CTF
 
 
@@ -18,9 +18,8 @@ class Flags:
         self._flag_cache = {}
 
     async def poll_and_submit_flags(self):
-        async with await get_channel() as channel:
+        async with get_channel() as channel:
             flag_queue = await FlagQueue.get(channel)
-            flag_notify_queue = await FlagNotifyQueue.get(channel)
             last_submit = time.time()
 
             async with database.get_session() as session:
@@ -62,12 +61,9 @@ class Flags:
                         print(f"Dupe list of size {len(dupe_list)}")
                         set_duplicates = update(Flag)\
                             .where(Flag.id.in_(dupe_list))\
-                            .values(status=FlagStatus.DUPLICATE_NOT_SUBMITTED)\
-                            .returning(Flag)
-                        result = (await session.execute(set_duplicates)).scalars()
-                        await asyncio.gather(*[
-                            flag_notify_queue.send_message(FlagNotifyMessage(flag.id, flag.manual_id, flag.execution_id))
-                            for flag in result])
+                            .values(status=FlagStatus.DUPLICATE_NOT_SUBMITTED)
+                        await session.execute(set_duplicates)
+                        await session.commit()
 
                     if len(submit_list) < batchsize and len(resubmit_list) > 0:
                         resubmit_amount = min(batchsize-len(submit_list), len(resubmit_list))
@@ -83,6 +79,7 @@ class Flags:
                             .values(status=FlagStatus.PENDING) \
                             .returning(Flag)
                         result = list((await session.execute(set_pending)).scalars())
+                        await session.commit()
 
                         diff = time.time() - last_submit
                         print(f"Submitting {len(submit_list)} flags, {diff:.2f}s since last time" +
@@ -103,17 +100,12 @@ class Flags:
                                 resubmit_list.append(FlagMessage(flag.id, flag.flag))
 
                         await session.commit()
-
-                        await asyncio.gather(*[
-                            flag_notify_queue.send_message(FlagNotifyMessage(flag.id, flag.manual_id, flag.execution_id))
-                            for flag in result])
                     else:
                         print("No flags for now")
 
     async def poll_and_parse_output(self):
-        async with await get_channel() as channel:
+        async with get_channel() as channel:
             flag_queue = await FlagQueue.get(channel)
-            flag_notify_queue = await FlagNotifyQueue.get(channel)
             output_queue = await OutputQueue.get(channel)
             async with database.get_session() as session:
                 async for message in output_queue.wait_for_messages():
@@ -125,8 +117,7 @@ class Flags:
                             continue
 
                         flag = match.group(group)
-                        flag_obj = Flag(flag=flag, status=FlagStatus.QUEUED,
-                                        execution_id=message.execution_id, manual_id=message.manual_id,
+                        flag_obj = Flag(flag=flag, status=FlagStatus.QUEUED, execution_id=message.execution_id,
                                         stdout=message.stdout, start=match.start(group), end=match.end(group))
                         if flag in self._flag_cache and self._flag_cache[flag] in DuplicatesDontResubmitFlagStatus:
                             flag_obj.status = FlagStatus.DUPLICATE_NOT_SUBMITTED
@@ -145,8 +136,3 @@ class Flags:
                         await asyncio.gather(*[
                             flag_queue.send_message(FlagMessage(flag_id=f.id, flag=f.flag))
                             for f in submissions])
-
-                    if len(duplicates) > 0:
-                        await asyncio.gather(*[
-                            flag_notify_queue.send_message(FlagNotifyMessage(flag.id, flag.manual_id, flag.execution_id))
-                            for flag in duplicates])

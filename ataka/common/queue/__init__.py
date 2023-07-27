@@ -1,11 +1,10 @@
 import asyncio
 import os
+from contextlib import asynccontextmanager
 
 import aio_pika
 from aio_pika import RobustConnection
 
-from .control import *
-from .exploit import *
 from .flag import *
 from .job import *
 from .output import *
@@ -25,5 +24,7 @@ async def disconnect():
     await connection.close()
 
 
+@asynccontextmanager
 async def get_channel():
-    return await connection.channel()
+    async with await connection.channel() as channel:
+        yield channel

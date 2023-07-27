@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, asdict
 
 import aio_pika
+import asyncio
 
 from ataka.common.queue.multiplexed_queue import MultiplexedQueue
 
@@ -70,7 +71,7 @@ class PubSubQueue(Queue):
 
     async def _get_queue(self) -> aio_pika.Queue:
         if self._queue is None:
-            self._queue = MultiplexedQueue(await self._channel.declare_queue(exclusive=True))
+            self._queue = MultiplexedQueue(await self._channel.declare_queue(exclusive=True, auto_delete=True))
             await self._queue.bind(await self._get_exchange())
         return self._queue
 

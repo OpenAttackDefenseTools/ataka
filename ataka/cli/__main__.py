@@ -3,12 +3,16 @@ from functools import update_wrapper
 from typing import List
 
 import typer
+from rich import print, box
+from rich.table import Table
+from rich.live import Live
 from pamqp.commands import Basic
+from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 
 from ataka.common import queue, database
-from ataka.common.database.models import Flag, FlagStatus
-from ataka.common.queue import get_channel, ControlQueue, ControlMessage, FlagQueue, FlagMessage, ControlAction
-from ataka.common.queue.output import OutputQueue
+from ataka.common.database.models import Flag, FlagStatus, Execution, Job
+from ataka.common.queue import FlagQueue, FlagMessage, OutputQueue
 
 
 def coro(f):
@@ -25,14 +29,38 @@ app = typer.Typer()
 @coro
 async def log():
     await queue.connect()
-    async with await queue.get_channel() as channel:
-        output_queue: OutputQueue = await OutputQueue.get(channel)
-        async for message in output_queue.wait_for_messages():
-            tag = 'MANUAL' if message.manual_id is not None else str(message.execution_id)
-            tag = tag.rjust(10)
-            error_tag = "ERR" if not message.stdout else "   "
-            output = '\n'.join([f"{tag} {error_tag} {line}" for line in message.output.strip().split("\n")])
-            print(output)
+    async with database.get_session() as session:
+        async with queue.get_channel() as channel:
+            output_queue: OutputQueue = await OutputQueue.get(channel)
+            async for message in output_queue.wait_for_messages():
+                load_execution = select(Execution) \
+                       .where(Execution.id == message.execution_id) \
+                       .options(joinedload(Execution.job).joinedload(Job.exploit), joinedload(Execution.target))
+
+                execution = (await session.execute(load_execution)).unique().scalar_one()
+                timestamp = execution.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+
+                table = Table(box=box.ROUNDED)
+                table.add_column("Timestamp")
+                table.add_column("Service")
+                table.add_column("Target")
+                table.add_column("Exploit ID")
+                table.add_column("")
+                table.add_column("Log")
+
+                is_manual = execution.job is None or execution.target is None
+                error_tag = "[bold red]ERR[/bold red]" if not message.stdout else "   "
+
+                for line in message.output.strip().split("\n"):
+                    if is_manual:
+                        table.add_row(timestamp, 'MANUAL', '', '', '', line)
+                    else:
+                        if execution.job.exploit_id is None:
+                            table.add_row(timestamp, execution.target.service, execution.target.ip, f'LOCAL {execution.job.manual_id}', error_tag, line)
+                        else:
+                            table.add_row(timestamp, execution.target.service, execution.target.ip, f'{execution.job.exploit.id} ({execution.job.exploit.author})', error_tag, line)
+                print(table)
+
     await queue.disconnect()
 
 
@@ -49,7 +77,7 @@ async def submit_flag(flag: List[str]):
     await database.disconnect()
 
     await queue.connect()
-    async with await queue.get_channel() as channel:
+    async with queue.get_channel() as channel:
         flag_queue: FlagQueue = await FlagQueue.get(channel)
         for message in messages:
             result = await flag_queue.send_message(message)
@@ -57,22 +85,6 @@ async def submit_flag(flag: List[str]):
                 print(f"Submitted {message.flag}")
             else:
                 print(result)
-    await queue.disconnect()
-
-
-@app.command()
-@coro
-async def reload():
-    await queue.connect()
-
-    channel = await get_channel()
-    control_queue: ControlQueue = await ControlQueue.get(channel)
-    result = await control_queue.send_message(ControlMessage(action=ControlAction.RELOAD_CONFIG))
-    if isinstance(result, Basic.Ack):
-        print("OK")
-    else:
-        print(result)
-
     await queue.disconnect()
 
 

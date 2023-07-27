@@ -6,8 +6,7 @@ from .queue import Message, PubSubQueue
 
 @dataclass
 class OutputMessage(Message):
-    manual_id: int | None
-    execution_id: None | int
+    execution_id: int
     stdout: bool
     output: str
 

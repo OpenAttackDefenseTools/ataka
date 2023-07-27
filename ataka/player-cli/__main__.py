@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-import player_cli
-
+from player_cli import app
 
 if __name__ == '__main__':
-    player_cli.root.app()
+    app()

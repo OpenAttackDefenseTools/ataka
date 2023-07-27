@@ -26,7 +26,7 @@ class Jobs:
         self._jobs = {}
 
     async def poll_and_run_jobs(self):
-        async with await get_channel() as channel:
+        async with get_channel() as channel:
             job_queue = await JobQueue.get(channel)
 
             async for job_message in job_queue.wait_for_messages():
@@ -223,7 +223,7 @@ class JobExecution:
                 case 2:
                     execution.stderr += output
 
-            await output_queue.send_message(OutputMessage(None, execution.database_id, stream == 1, output))
+            await output_queue.send_message(OutputMessage(execution.database_id, stream == 1, output))
         if execution.status in [JobExecutionStatus.QUEUED, JobExecutionStatus.RUNNING]:
             execution.status = JobExecutionStatus.FINISHED
         return execution
