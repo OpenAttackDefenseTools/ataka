@@ -5,6 +5,7 @@ import typer
 from rich import print
 import player_cli.exploit
 import player_cli.flags
+import player_cli.service
 import player_cli.ctfconfig_wrapper
 
 state = {
@@ -19,6 +20,8 @@ app.add_typer(player_cli.exploit.app,
               name='exploit', help='Manage exploits.')
 app.add_typer(player_cli.flags.app,
               name='flag', help='Manage flags.')
+app.add_typer(player_cli.service.app,
+              name='service', help='Show services (legacy).')
 
 
 @app.callback()
