@@ -11,7 +11,7 @@ ATAKA_HOST = 'localhost:8000'
 RUNLOCAL_TARGETS = ["10.99.0.2"]
 
 # IPs that are always excluded from attacks.
-STATIC_EXCLUSIONS = set([])
+STATIC_EXCLUSIONS = {'10.99.1.2'}
 
 ROUND_TIME = 10
 
@@ -29,13 +29,8 @@ START_TIME = 1690227547
 
 ### END EXPORTED CONFIG
 
-
-def get_services():
-    return ["buffalo", "gopher_coin", "kyc", "oly_consensus", "swiss_keys", "to_the_moon", "wall.eth"]
-
-
 def get_targets():
-    services = get_services()
+    services = ["buffalo", "gopher_coin", "kyc", "oly_consensus", "swiss_keys", "to_the_moon", "wall.eth"]
 
     default_targets = {service: {f"10.99.{i}.2": ["1234", "5678"] for i in range(3)} for service in services}
 

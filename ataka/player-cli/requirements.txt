@@ -1,2 +1,2 @@
-typer
+typer[all]
 requests

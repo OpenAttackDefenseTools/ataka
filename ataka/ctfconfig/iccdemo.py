@@ -51,20 +51,10 @@ SUBMIT_URL = "http://10.10.0.1:8080/flags"
 FLAGID_URL = "http://10.10.0.1:8081/flagIds"
 
 
-def get_services():
-    return [
-        "CyberUni_1",
-        "CyberUni_2",
-        "CyberUni_3",
-        "CyberUni_4",
-        "ClosedSea-1",
-        "ClosedSea-2",
-        "Trademark",
-        "rpn",
-    ]
-
-
 def get_targets():
+    services = ["CyberUni_1", "CyberUni_2", "CyberUni_3", "CyberUni_4",
+                "ClosedSea-1", "ClosedSea-2", "Trademark", "rpn"]
+
     ## TODO: fill
     default_targets = {
         "rpn":
@@ -77,7 +67,7 @@ def get_targets():
             {f"10.62.{i}.1": [] for i in range(10)},
     }
     ## A generic solution for just a single vulnbox:
-    # default_targets = {service: {f"10.62.{i}.1": [] for i in range(10)} for service in get_services()}
+    # default_targets = {service: {f"10.62.{i}.1": [] for i in range(10)} for service in services}
 
     flag_ids = requests.get(FLAGID_URL).json()
 
@@ -89,7 +79,7 @@ def get_targets():
             }
             for ip, ip_info in (default_targets[service] | service_info).items()
         ]
-        for service, service_info in ({service: [] for service in get_services()} | flag_ids).items()
+        for service, service_info in ({service: [] for service in services} | flag_ids).items()
     }
 
     return targets

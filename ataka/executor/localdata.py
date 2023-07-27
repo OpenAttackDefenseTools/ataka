@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 
-from ataka.common.database.models import JobExecutionStatus
+from ataka.common.job_execution_status import JobExecutionStatus
 
 
 class LocalExploitStatus(str, Enum):

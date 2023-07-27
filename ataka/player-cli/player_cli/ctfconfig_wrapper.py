@@ -8,27 +8,11 @@ from .ctfconfig import *
 
 FLAG_FINDER = re.compile(FLAG_REGEX[0])
 
-def init():
-    return {
-        'ctf_config': {
-            'start_time': START_TIME,
-            'round_time': ROUND_TIME,
-            'flag_regex': FLAG_REGEX,
-            'services': get_services()
-        },
-        'exploits': {
-        },
-    }
-
-
 def request(method, endpoint, data=None):
-    if endpoint == 'init':
-        return init()
-    elif endpoint == 'flag/submit':
+    if endpoint == 'flag/submit':
+        # TODO: actually provide working output and implement for runlocal
         return submit_flags(FLAG_FINDER.findall(data['flags']))
-    elif endpoint.startswith('targets/service/'):
-        return get_targets()[endpoint.split('/')[-1]]
-    elif endpoint == 'services':
-        return get_services()
+    elif endpoint == 'targets':
+        return [target | {"service": service} for service,targets in get_targets().items() for target in targets]
     else:
         assert False, f'Invalid request: {method} {endpoint} {data}'

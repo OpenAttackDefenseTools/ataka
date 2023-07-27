@@ -8,7 +8,6 @@ from subprocess import Popen
 import exrex
 
 from ataka.common.flag_status import FlagStatus
-from ataka.common.queue import get_channel, ControlQueue, ControlAction, ControlMessage
 
 
 def catch(default=None):
@@ -34,7 +33,7 @@ def expect(validator=lambda *args, **kwargs: True):
             result = func(*args, **kwargs)
             if not validator(result, *args, **kwargs):
                 logging.error(f"CTF Config returned unexpected result for "
-                      f"{func.__name__}({', '.join([repr(x) for x in args] + [str(k) + '=' + repr(v) for k, v in kwargs.items()])})")
+                              f"{func.__name__}({', '.join([repr(x) for x in args] + [str(k) + '=' + repr(v) for k, v in kwargs.items()])})")
                 logging.error(result)
             return result
 
@@ -55,32 +54,6 @@ class CTF:
     def package_player_cli(self):
         logging.info("Packaging player-cli")
         Popen(['/ataka/player-cli/package_player_cli.sh'])
-
-    async def watch_for_reload(self):
-        async with await get_channel() as channel:
-            try:
-                control_queue = await ControlQueue.get(channel)
-
-                async for control_message in control_queue.wait_for_messages():
-                    match control_message.action:
-                        case ControlAction.RELOAD_CONFIG:
-                            self.reload()
-                            await self._send_ctf_config(control_queue)
-
-                        case ControlAction.GET_CTF_CONFIG:
-                            await self._send_ctf_config(control_queue)
-            except Exception as e:
-                logging.error(traceback.format_exc())
-
-    async def _send_ctf_config(self, control_queue):
-        return await control_queue.send_message(ControlMessage(action=ControlAction.CTF_CONFIG_UPDATE,
-                                                               extra={
-                                                                   "start_time": self.get_start_time(),
-                                                                   "round_time": self.get_round_time(),
-                                                                   "flag_regex": self.get_flag_regex()[0],
-                                                                   "services": self.get_services(),
-                                                                   "runlocal_targets": self.get_runlocal_targets(),
-                                                               }))
 
     @catch(default=None)
     def reload(self):
@@ -133,17 +106,12 @@ class CTF:
     def get_next_tick_start(self):
         return self.get_start_time() + self.get_round_time() * (self.get_cur_tick() + 1)
 
-    @catch(default=[])
-    @expect(validator=lambda x, self: type(x) == list and all([type(s) == str for s in x]))
-    def get_services(self):
-        return self._module.get_services()
-
     @catch(default={})
-    @expect(validator=lambda x, self: type(x) == dict and len(x) == len(self.get_services()) and all(
-        [type(x[service]) == list and all(
+    @expect(validator=lambda x, self: type(x) == dict and all(
+        [type(service) == str and type(item) == list and all(
             ['ip' in entry and 'extra' in entry and type(entry['ip']) == str and type(entry['extra'] == str)
-             for entry in x[service]]
-        ) for service in self.get_services()]
+             for entry in item]
+        ) for service, item in x.items()]
     ))
     def get_targets(self):
         return self._module.get_targets()
@@ -169,7 +137,6 @@ class CTF:
             self.get_flag_ratelimit()
             self.get_start_time()
 
-            self.get_services()
             self.get_targets()
 
             fake_flag_count = min(batchsize, 10)

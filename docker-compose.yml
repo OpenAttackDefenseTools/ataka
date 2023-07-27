@@ -55,8 +55,6 @@ services:
     build:
       context: ./
       dockerfile: ataka/api/Dockerfile
-      args:
-        CTF: $CTF
     volumes:
       - ${DATA_STORE}/shared:/data/shared:rw,z
       - ${DATA_STORE}/exploits:/data/exploits:rw,z

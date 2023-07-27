@@ -1,7 +1,5 @@
 FROM python:3.11-slim
 
-ARG CTF
-
 RUN pip install --no-cache-dir --upgrade pip
 
 WORKDIR /
@@ -16,7 +14,5 @@ VOLUME /data/exploits
 COPY ataka/api/requirements.txt /ataka/api/
 RUN pip install --no-cache-dir -r /ataka/api/requirements.txt
 COPY ataka/api /ataka/api
-
-VOLUME /ataka/api
 
 CMD [ "bash", "/ataka/common/delayed_start.sh", "--", "python", "-m", "uvicorn", "--host", "0.0.0.0", "ataka.api:app"]

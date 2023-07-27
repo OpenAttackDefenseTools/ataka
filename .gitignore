@@ -1,6 +1,7 @@
 *.pyc
 *.swp
 .idea/
+*.iml
 src/**/__pycache__/
 venv/
 **/.vagrant/
