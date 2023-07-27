@@ -39,7 +39,13 @@ def main(
 
 
 @app.command('reload', help='Reload offline ctfconfig')
-def reload_config():
+def reload_config(
+        host: str = typer.Option(None, '--host', '-h',
+                                 help='Ataka web API host.'),
+    ):
+    if host is not None:
+        state['host'] = host
+
     SANITY_CHECK_STR = b'#!/usr/bin/env python3\nPK'
 
     cli_path = sys.argv[0]
