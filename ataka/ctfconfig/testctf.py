@@ -5,7 +5,7 @@ from ataka.common.flag_status import FlagStatus
 ### EXPORTED CONFIG
 
 # Ataka Host Domain / IP
-ATAKA_HOST = 'localhost:8000'
+ATAKA_HOST = 'ataka.h4xx.eu'
 
 # Default targets for atk runlocal
 RUNLOCAL_TARGETS = ["10.99.0.2"]

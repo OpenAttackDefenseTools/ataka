@@ -3,6 +3,7 @@ import math
 import os
 import time
 import traceback
+from datetime import datetime
 from typing import Optional
 
 from aiodocker import DockerError
@@ -131,7 +132,8 @@ class JobExecution:
             job = (await session.execute(get_job)).unique().scalar_one()
             executions = job.executions
 
-            if job.timeout.timestamp() - time.time() < 0:
+            time_left = job.timeout.timestamp() - time.time()
+            if time_left < 0:
                 job.status = JobExecutionStatus.TIMEOUT
                 for e in executions:
                     e.status = JobExecutionStatus.TIMEOUT
@@ -140,6 +142,8 @@ class JobExecution:
                 return None
 
             local_exploit = await self._exploits.ensure_exploit(job.exploit)
+
+            job.timeout = datetime.fromtimestamp(time.time() + time_left)
             if local_exploit.status is not LocalExploitStatus.FINISHED:
                 print(f"Got build error for exploit {local_exploit.id} (service {local_exploit.service}) by {local_exploit.author}")
                 print(f"   {local_exploit.build_output}")

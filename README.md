@@ -35,7 +35,7 @@ The player-cli is a `.pyz` file (Python Zipped Executable).
 When the ctfconfig is modified and `./ataka-cli reload` is run, the local offline copy of the ctfconfig needs to also be reloaded. For that run:
 
 ```bash
-$ atk service reload
+$ atk reload
 Writing player-cli at <player-cli-location>
 ```
 
@@ -59,31 +59,36 @@ They will be matched by a regular expression, so the output doesn't have to be c
 Get the name of your service:
 
 ```
-$ atk service ls
-buffalo
-gopher_coin
-kyc
-oly_consensus
-swiss_keys
-to_the_moon
-wall.eth
+$ atk flag ids
+[*] Flag IDs for service buffalo
+  10.99.0.2 => ["1234", "5678"]
+[*] Flag IDs for service swiss_keys
+  10.99.0.2 => ["1234", "5678"]
+[*] Flag IDs for service to_the_moon
+  10.99.0.2 => ["1234", "5678"]
+[*] Flag IDs for service kyc
+  10.99.0.2 => ["1234", "5678"]
+[*] Flag IDs for service gopher_coin
+  10.99.0.2 => ["1234", "5678"]
+[*] Flag IDs for service wall.eth
+  10.99.0.2 => ["1234", "5678"]
+[*] Flag IDs for service oly_consensus
+  10.99.0.2 => ["1234", "5678"]
 ```
 
 Run the exploit:
 
 ```
-$ atk exploit runlocal exploit.py SERVICE EXPLOIT_ID
+$ atk exploit runlocal exploit.py SERVICE
 ```
 
 Where:
 - `exploit.py` is your exploit (must be executable);
 - `SERVICE` is the target service name;
-- `EXPLOIT_ID` is a unique identifier for your exploit (you can check with `atk exploit ls` to avoid colliding with an existing one). *This is actually ignored in the current version, you can pass whatever.*
 
 This will test the exploit against the NOP team: `exploit runlocal` is supposed to be used for testing, not for actual attacks, which should be centralized to allow the captain to manage them.
 
-By default, only the first 100 characters of the exploit output will be shown.
-You can use `-l/--limit` to control this; `-l -1` shows the whole output.
+By default, all output will be shown, to limit this, use the `-l/--limit` flag.
 
 If you only want to run a fixed number of attack rounds, you can use `-c/--count` (e.g., `-c 1` is a one-shot attack).
 By default, the command attacks forever until manually terminated.
@@ -133,9 +138,6 @@ You can check it with `atk exploit ls`.
 
 Whenever you want to update your exploit to a new version, just issue the `exploit upload` command again.
 The attacker will assign progressive numbers to the versions, such as `NAME-1`, `NAME-2`, and so forth.
-
-**New exploits will NOT be activated by default**.
-When you upload a new version of an already active exploit, the CLI will deactivate the old version and activate the new version automatically (if that's not what you want, pass `--no-switch-if-active` to avoid it).
 
 Uploaded exploits can be downloaded by anyone with `atk exploit download EXPLOIT_ID OUTPUT_DIR`.
 
