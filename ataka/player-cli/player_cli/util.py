@@ -1,11 +1,13 @@
 import os
 import time
-import typer
-import requests
-import player_cli
-
 from datetime import datetime
 
+import player_cli
+import requests
+import typer
+
+CHECK_FOR_CMD = re.compile(r'CMD\s?\[\s?(.+)\s?\]')
+EXTRACT_CMD = re.compile(r'"([\w.]+)"')
 
 def colorfy(msg, color):
     return typer.style(msg, fg=color, bold=True)
@@ -85,27 +87,8 @@ def highlight_flags(s, func):
     return player_cli.ctfconfig_wrapper.FLAG_FINDER.sub(repl, s)
 
 
-def parse_dockerfile_cmd(content):
-    exec_args = None
-
-    for line in content.splitlines():
-        line = line.strip()
-
-        if not line.startswith('CMD '):
-            continue
-        line = line[4:].strip()
-
-        if line[0] != '[' or line[-1] != ']':
-            continue
-        line = line[1:-1].strip()
-
-        args = []
-        for arg in line.split(','):
-            arg = arg.strip()
-            if arg[0] != '"' or arg[-1] != '"':
-                break
-            args.append(arg[1:-1])
-        else:
-            exec_args = args
-
-    return exec_args
+def parse_dockerfile_cmd(content: str) -> list[str] | None:
+    matches = CHECK_FOR_CMD.findall(content)
+    if matches:
+        return EXTRACT_CMD.findall(matches[0])
+    return None
