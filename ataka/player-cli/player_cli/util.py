@@ -47,7 +47,7 @@ def request(method, endpoint, data=None, params=None):
             print(f"{DEBUG_STR}: {method} {endpoint}{'' if params is None else f' with params {params}'}")
             if data is not None:
                 print(f"{DEBUG_STR}: {data}")
-        print(f"{DEBUG_STR}: ")
+            print(f"{DEBUG_STR}: ")
 
         result = player_cli.ctfconfig_wrapper.request(method, endpoint, data=data)
         if player_cli.state['debug']:
