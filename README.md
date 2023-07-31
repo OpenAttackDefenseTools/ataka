@@ -227,6 +227,9 @@ $ echo 'dirtyFLAG{foo}dirtyFLAG{bar}dirty' | atk flag submit
 ## Emergency mode
 
 Invoking the CLI as `atk -b/--bypass-tools ...` will bypass the centralized Ataka service and connect directly to the gameserver to get attack targets, flag IDs and to submit flags.
-In this mode, only `exploit runlocal` and `flag submit` are guaranteed to work.
+In this mode, only
+- `exploit flag ids`,
+- `exploit runlocal` and
+- `flag submit` are guaranteed to work.
 
 A typical emergency scenario will involve running exploits locally with `exploit runlocal --all-targets` (and/or `-N/-T` if finer target control is required).
