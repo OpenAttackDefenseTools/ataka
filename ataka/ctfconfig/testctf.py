@@ -32,7 +32,7 @@ START_TIME = 1690227547
 def get_targets():
     services = ["buffalo", "gopher_coin", "kyc", "oly_consensus", "swiss_keys", "to_the_moon", "wall.eth"]
 
-    default_targets = {service: {f"10.99.{i}.2": ["1234", "5678"] for i in range(3)} for service in services}
+    default_targets = {service: {f"10.99.{i}.2": ["1234", "5678"] for i in range(10)} for service in services}
 
     # remote fetch here
     flag_ids = default_targets

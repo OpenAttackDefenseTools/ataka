@@ -95,6 +95,16 @@ services:
     env_file:
       - .env
 
+  exploit:
+    image: alpine:latest
+    command: "sleep infinity"
+    restart: always
+    init: true
+    user: $USERID
+    container_name: ataka-exploit
+    networks:
+      - ataka-exploits
+
   ctfcode:
     image: openattackdefensetools/ataka-ctfcode
     restart: always
@@ -142,3 +152,4 @@ volumes:
 
 networks:
   ataka:
+  ataka-exploits:
