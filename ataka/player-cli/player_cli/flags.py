@@ -106,6 +106,8 @@ def poll_and_show_flags(executions: int | list[int], force_detail=False, timeout
                     new_flag['status_list'] = old_flag['status_list']
                     if old_flag['status_list'][-1] != new_flag['status']:
                         new_flag['status_list'] += [new_flag['status']]
+                else:
+                    new_flag['status_list'] = [new_flag['status']]
 
                 if new_flag['status'] in FLAG_STATUS_IS_FINAL:
                     finished_flags[new_flag['id']] = new_flag
