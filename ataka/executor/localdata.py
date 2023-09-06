@@ -12,7 +12,8 @@ class LocalExploitStatus(str, Enum):
 
 @dataclass
 class LocalExploit:
-    file: str
+    id: str
+    docker_name: str
     status: LocalExploitStatus
     build_output: str = ""
     docker_id: str = None

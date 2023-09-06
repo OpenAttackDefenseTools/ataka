@@ -1,6 +1,7 @@
 import os
 import base64
 import binascii
+import secrets
 import time
 from datetime import datetime
 
@@ -357,8 +358,9 @@ async def exploit_create(req: ExploitCreateRequest,
                 continue
             max_idx = max(max_idx, idx)
     exploit_id = f'{prefix}{max_idx + 1}'
+    docker_name = re.sub(r'[^0-9a-z\-]+', '', exploit_id.lower()) + "-" + secrets.token_hex(8)
 
-    ctx_path = f"/data/exploits/{exploit_id}"
+    ctx_path = f"/data/exploits/{docker_name}"
     excl_opener = lambda path, flags: os.open(path, flags | os.O_EXCL)
     try:
         with open(ctx_path, "wb", opener=excl_opener) as f:
@@ -366,7 +368,7 @@ async def exploit_create(req: ExploitCreateRequest,
     except FileExistsError:
         return {"success": False, "error": "Exploit already exists (file)"}
 
-    exploit = Exploit(id=exploit_id, exploit_history_id=req.history_id,
+    exploit = Exploit(id=exploit_id, exploit_history_id=req.history_id, docker_name=docker_name,
                       active=False, author=req.author)
     session.add(exploit)
     try:
@@ -439,11 +441,11 @@ async def exploit_download(exploit_id: str,
                            session: AsyncSession = Depends(get_session)):
     get_exploit = select(Exploit).where(Exploit.id == exploit_id)
     try:
-        (await session.execute(get_exploit)).scalar_one()
+        exploit = (await session.execute(get_exploit)).scalar_one()
     except NoResultFound:
         return {"success": False, "error": "Exploit does not exist"}
 
-    ctx_path = f"/data/exploits/{exploit_id}"
+    ctx_path = f"/data/exploits/{exploit.docker_name}"
     with open(ctx_path, "rb") as f:
         data = f.read()
 
