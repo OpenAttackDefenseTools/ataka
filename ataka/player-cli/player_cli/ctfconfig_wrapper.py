@@ -2,10 +2,8 @@
 This file is responsible for mocking some of the API endpoints we have in ataka
     And act as a fallback, in case our tools fail
 '''
-
-import requests
-import json
 import re
+
 from .ctfconfig import *
 
 FLAG_FINDER = re.compile(FLAG_REGEX[0])
@@ -21,6 +19,7 @@ def init():
         'exploits': {
         },
     }
+
 
 def request(method, endpoint, data=None):
     if endpoint == 'init':

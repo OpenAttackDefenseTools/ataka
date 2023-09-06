@@ -1,139 +1,119 @@
-import logging
 import json
 import requests
 
-try:
-    from ataka.common.database.models import FlagStatus
-except ImportError as e:
-    import enum
-    class FlagStatus(str, enum.Enum):
-        UNKNOWN = 'unknown'
+from ataka.common.flag_status import FlagStatus
 
-        # everything is fine
-        OK = 'ok'
-
-        # Flag is currently being submitted
-        QUEUED = 'queued'
-
-        # Flag is currently being submitted
-        PENDING = 'pending'
-
-        # We already submitted this flag and the submission system tells us thats
-        DUPLICATE = 'duplicate'
-
-        # something is wrong with our submitter
-        ERROR = 'error'
-
-        # the service did not check the flag, but told us to fuck off
-        RATELIMIT = 'ratelimit'
-
-        # something is wrong with the submission system
-        EXCEPTION = 'exception'
-
-        # we tried to submit our own flag and the submission system lets us know
-        OWNFLAG = 'ownflag'
-
-        # the flag is not longer active. This is used if a flags are restricted to a
-        # specific time frame
-        INACTIVE = 'inactive'
-
-        # flag fits the format and could be sent to the submission system, but the
-        # submission system told us it is invalid
-        INVALID = 'invalid'
-
-        # This status code is used in case the scoring system requires the services to
-        # be working. Flags that are rejected might be sent again!
-        SERVICEBROKEN = 'servicebroken'
+### EXPORTED CONFIG
 
 # Ataka Host Domain / IP
-ATAKA_HOST = 'ataka.local'
+ATAKA_HOST = "ataka.h4xx.eu"
 
-# Our own host
-OWN_HOST = '10.60.4.1'
-
+# Default targets for atk runlocal
 RUNLOCAL_TARGETS = [
     # NOP Team
-    '10.60.0.1'
+    "10.60.0.1",
+    "10.61.0.1",
+    "10.62.0.1",
+    "10.63.0.1",
+    "10.60.1.1",
+    "10.61.1.1",
+    "10.62.1.1",
+    "10.63.1.1",
+    "10.60.7.1",
+    "10.61.7.1",
+    "10.62.7.1",
+    "10.63.7.1",
 ]
 
-# Config for framework
+# IPs that are always excluded from attacks. These can be included in runlocal with --ignore-exclusions
+# These still get targets with flag ids, they're just never (automatically) attacked
+STATIC_EXCLUSIONS = {"10.60.5.1", "10.61.5.1", "10.62.5.1", "10.63.5.1"}
+
 ROUND_TIME = 120
 
 # format: regex, group where group 0 means the whole regex
 FLAG_REGEX = r"[A-Z0-9]{31}=", 0
 
-FLAG_BATCHSIZE = 100
+# Maximum list length for submit_flags()
+FLAG_BATCHSIZE = 2500
 
-FLAG_RATELIMIT = 0.5  # Wait in seconds between each call of submit_flags()
+# Minimum wait in seconds between each call of submit_flags()
+FLAG_RATELIMIT = 5
 
-START_TIME = 1655359200+1 # Thursday 16 June 2022 06:00:00 GMT
+# When the CTF starts
+START_TIME = 1689490800 + 1  # Sun Jul 16 2023 09:00:00 GMT+0200 (Central European Summer Time)
 
-# IPs that are always excluded from attacks.
-STATIC_EXCLUSIONS = set([
-    # Ourselves
-    '10.60.4.1',
-    # NOP team
-    '10.60.0.1',
-])
-
-TEAM_TOKEN = '3195e961fc60275492b910ff978928c6'
-SUBMIT_URL = 'http://10.10.0.1:8080/flags'
-FLAGID_URL = 'http://10.10.0.1:8081/flagIds'
+### END EXPORTED CONFIG
 
 
-# End config
+TEAM_TOKEN = "45f8890e6c13d864527c1e869ca384d0"
+SUBMIT_URL = "http://10.10.0.1:8080/flags"
+FLAGID_URL = "http://10.10.0.1:8081/flagIds"
+
 
 def get_services():
-   return ['ExamPortal', 'ExamNotes', 'EncryptedNotes', 'ClosedSea-1', 'ClosedSea-2', 'Trademark', "rpn"]
-
-def get_scoreboard_services():
-    return ['ClosedSea-1', 'ClosedSea-2', 'ExamNotes', 'EncryptedNotes', 'ExamPortal', 'RPN1', 'RPN2', 'Trademark']
+    return [
+        "CyberUni_1",
+        "CyberUni_2",
+        "CyberUni_3",
+        "CyberUni_4",
+        "ClosedSea-1",
+        "ClosedSea-2",
+        "Trademark",
+        "rpn",
+    ]
 
 
 def get_targets():
+    ## TODO: fill
+    default_targets = {
+        "rpn":
+            {f"10.60.{i}.1": [] for i in range(10)},
+        "CyberUni_1":
+            {f"10.61.{i}.1": [] for i in range(10)},
+        "CyberUni_2":
+            {f"10.61.{i}.1": [] for i in range(10)},
+        "Trademark":
+            {f"10.62.{i}.1": [] for i in range(10)},
+    }
+    ## A generic solution for just a single vulnbox:
+    # default_targets = {service: {f"10.62.{i}.1": [] for i in range(10)} for service in get_services()}
+
     flag_ids = requests.get(FLAGID_URL).json()
 
     targets = {
         service: [
             {
-                'ip': ip,
-                'extra': json.dumps(ip_info),
+                "ip": ip,
+                "extra": json.dumps(ip_info),
             }
-            for ip, ip_info in service_info.items()
+            for ip, ip_info in (default_targets[service] | service_info).items()
         ]
-        for service, service_info in flag_ids.items()
+        for service, service_info in ({service: [] for service in get_services()} | flag_ids).items()
     }
-
-    targets["rpn"] = [{'ip': ip, "extra": "[]"} for _,ip in get_all_target_ips().items()]
 
     return targets
 
-def get_all_target_ips():
-    return {i: f'10.60.{i}.1' for i in range(0, 8)}
-
-
-logger = logging.getLogger()
-
 
 def submit_flags(flags):
-    resp = requests.put(SUBMIT_URL, headers={
-        'X-Team-Token': TEAM_TOKEN
-    }, json=flags).json()
+    resp = requests.put(
+        SUBMIT_URL, headers={"X-Team-Token": TEAM_TOKEN}, json=flags
+    ).json()
 
     results = []
     for flag_resp in resp:
-        msg = flag_resp['msg']
-        if flag_resp['status']:
+        msg = flag_resp["msg"]
+        if flag_resp["status"]:
             status = FlagStatus.OK
-        elif 'invalid flag' in msg:
+        elif "invalid flag" in msg:
             status = FlagStatus.INVALID
-        elif 'flag from nop team' in msg:
+        elif "flag from nop team" in msg:
             status = FlagStatus.INACTIVE
-        elif 'flag is your own' in msg:
+        elif "flag is your own" in msg:
             status = FlagStatus.OWNFLAG
-        elif 'flag too old' in msg or 'flag is too old' in msg:
+        elif "flag too old" in msg or "flag is too old" in msg:
             status = FlagStatus.INACTIVE
-        elif 'flag already claimed' in msg:
+        elif "flag already claimed" in msg:
             status = FlagStatus.DUPLICATE
         else:
             status = FlagStatus.ERROR
@@ -141,13 +121,3 @@ def submit_flags(flags):
         results.append(status)
 
     return results
-
-
-if __name__ == '__main__':
-    import pprint
-    pp = pprint.PrettyPrinter(indent=4)
-    pp.pprint(get_targets())
-    pp.pprint(submit_flags([
-        'test_flag_1',
-        'test_flag_2',
-    ]))

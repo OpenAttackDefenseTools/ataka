@@ -1,6 +1,6 @@
 import logging
 
-from ataka.common.database.models import FlagStatus
+from ataka.common.flag_status import FlagStatus
 
 import json
 import requests
@@ -68,7 +68,7 @@ def submit_flags(flags):
             if resp == '[OK]\n':
                 status = FlagStatus.OK
             elif 'format' in resp:
-                status = FlagStatus.FORMAT
+                status = FlagStatus.INVALID
             elif 'Invalid flag' in resp:
                 status = FlagStatus.INVALID
             elif 'Expired' in resp:
@@ -79,8 +79,6 @@ def submit_flags(flags):
                 status = FlagStatus.NOP
             elif 'own flag' in resp:
                 status = FlagStatus.OWNFLAG
-            elif 'OFFLINE' in resp:
-                status = FlagStatus.OFFLINE
             else:
                 status = FlagStatus.ERROR
             results.append(status)
