@@ -106,7 +106,6 @@ services:
     volumes:
       - ./ataka/ctfconfig:/ataka/ctfconfig:ro
       - ./ataka/player-cli:/ataka/player-cli:ro
-      - ./ataka/templates:/ataka/templates:ro
       - ${DATA_STORE}/shared:/data/shared:rw,z
     security_opt:
       - label:disable

@@ -1,6 +1,7 @@
 import os
 import base64
 import binascii
+from datetime import datetime
 
 import asyncio
 import random
@@ -111,13 +112,42 @@ async def get_job(job_id, session: Session = Depends(get_session)):
 
 
 @app.get("/api/flags")
-async def all_flags():
-    # TODO
-    return []
+async def all_flags(
+    start: datetime | None = None,
+    stop: datetime | None = None,
+    session: Session = Depends(get_session),
+):
+    get_flags = select(Flag, Execution, Target, Job, Exploit)
+
+    if start is not None:
+        get_flags = get_flags.filter(Flag.timestamp >= start)
+    if stop is not None:
+        get_flags = get_flags.filter(Flag.timestamp <= stop)
+
+    get_flags = (
+        get_flags.join(Execution, Flag.execution_id == Execution.id)
+        .join(Target, Execution.target_id == Target.id)
+        .join(Job, Execution.job_id == Job.id)
+        .join(Exploit, Job.exploit_id == Exploit.id)
+    )
+
+    flags = (await session.execute(get_flags)).all()
+    flags = [
+        {
+            "flag": fl.to_dict(),
+            "execution": ex.to_dict(),
+            "target": ta.to_dict(),
+            "job": jo.to_dict(),
+            "exploit": exp.to_dict(),
+        }
+        for fl, ex, ta, jo, exp in flags
+    ]
+
+    return flags
 
 
 @app.get("/api/services")
-async def all_flags():
+async def all_services():
     if state.ctf_config is None:
         return []
     return state.ctf_config["services"]
@@ -158,7 +188,7 @@ async def submit_flag(submission: FlagSubmission, session: Session = Depends(get
     await output_queue.send_message(output_message)
 
     try:
-        await asyncio.wait_for(task, 3)
+        await asyncio.wait_for(task, 10)
     except TimeoutError:
         pass
 
@@ -197,6 +227,24 @@ async def exploit_history_create(req: ExploitHistoryCreateRequest,
         return {"success": False, "error": "History already exists"}
 
     return {"success": True, "error": ""}
+
+@app.get("/api/exploit_history/{history_id}")
+async def exploit_history_get(
+        history_id: str,
+        session: Session = Depends(get_session)
+):
+    get_history = select(ExploitHistory) \
+        .where(ExploitHistory.id == history_id);
+    try:
+        history = (await session.execute(get_history)).scalar_one()
+    except NoResultFound:
+        return {"success": False, "error": "History does not exist"}
+
+    return {
+        "success": True,
+        "error": "",
+        "history": history.to_dict(),
+    }
 
 
 @app.get("/api/exploit_history/{history_id}/exclusions")

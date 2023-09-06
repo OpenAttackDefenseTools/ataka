@@ -19,4 +19,4 @@ COPY ataka/api /ataka/api
 
 VOLUME /ataka/api
 
-CMD [ "bash", "/ataka/common/delayed_start.sh", "--", "python", "-m", "uvicorn", "--reload", "--host", "0.0.0.0", "ataka.api:app"]
+CMD [ "bash", "/ataka/common/delayed_start.sh", "--", "python", "-m", "uvicorn", "--host", "0.0.0.0", "ataka.api:app"]
