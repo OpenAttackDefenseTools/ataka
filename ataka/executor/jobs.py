@@ -6,7 +6,7 @@ from typing import Optional
 
 from aiodocker import DockerError
 from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 
 from ataka.common import database
 from ataka.common.database.models import Job, Execution
@@ -63,30 +63,40 @@ class JobExecution:
 
         exploit = job.exploit
 
-        persist_dir = f"/data/persist/{exploit.file}"
-        host_persist_dir = f"{self._data_store}/persist/{exploit.file}"
+        persist_dir = f"/data/persist/{exploit.docker_name}"
+        host_persist_dir = f"{self._data_store}/persist/{exploit.docker_name}"
+        host_shared_dir = f"{self._data_store}/shared/exploits"
 
         try:
             os.makedirs(persist_dir, exist_ok=True)
-            container_ref = await self._docker.containers.create_or_replace(name=f"ataka-exploit-{exploit.file}",
-                                                                            config={
-                                                                                "Image": exploit.docker_id,
-                                                                                "Cmd": ["sleep", str(math.floor(
-                                                                                    job.timeout - time.time()))],
-                                                                                "AttachStdin": False,
-                                                                                "AttachStdout": False,
-                                                                                "AttachStderr": False,
-                                                                                "Tty": False,
-                                                                                "OpenStdin": False,
-                                                                                "StopSignal": "SIGKILL",
-                                                                                "HostConfig": {
-                                                                                    "Mounts": [{
-                                                                                        "Type": "bind",
-                                                                                        "Source": host_persist_dir,
-                                                                                        "Target": "/persist",
-                                                                                    }]
-                                                                                }
-                                                                            })
+            container_ref = await self._docker.containers.create_or_replace(
+                name=f"ataka-exploit-{exploit.docker_name}",
+                config={
+                    "Image": exploit.docker_id,
+                    "Cmd": ["sleep", str(math.floor(job.timeout - time.time()))],
+                    "AttachStdin": False,
+                    "AttachStdout": False,
+                    "AttachStderr": False,
+                    "Tty": False,
+                    "OpenStdin": False,
+                    "StopSignal": "SIGKILL",
+                    "HostConfig": {
+                        "Mounts": [
+                            {
+                                "Type": "bind",
+                                "Source": host_persist_dir,
+                                "Target": "/persist",
+                            },
+                            {
+                                "Type": "bind",
+                                "Source": host_shared_dir,
+                                "Target": "/shared",
+                            }
+                        ],
+                        "CapAdd": ["NET_RAW"],
+                    },
+                },
+            )
 
             await container_ref.start()
         except DockerError as exception:
@@ -103,9 +113,9 @@ class JobExecution:
         # Execute all the exploits
         results = await asyncio.gather(*execute_tasks)
 
-        #try:
+        # try:
         #    os.rmdir(persist_dir)
-        #except (FileNotFoundError, OSError):
+        # except (FileNotFoundError, OSError):
         #    pass
 
         await self.submit_to_database(results)
@@ -113,11 +123,11 @@ class JobExecution:
 
     async def fetch_job_from_database(self) -> Optional[LocalJob]:
         async with database.get_session() as session:
-            get_job = select(Job).where(Job.id == self.id)
-            job = (await session.execute(get_job)).scalar_one()
-            get_executions = select(Execution).where(Execution.job_id == self.id) \
-                .options(selectinload(Execution.target))
-            executions = (await session.execute(get_executions)).scalars()
+            get_job = select(Job).where(Job.id == self.id).options(
+                joinedload(Job.exploit), joinedload(Job.executions).joinedload(Execution.target)
+            )
+            job = (await session.execute(get_job)).unique().scalar_one()
+            executions = job.executions
 
             if job.timeout.timestamp() - time.time() < 0:
                 job.status = JobExecutionStatus.TIMEOUT
@@ -127,14 +137,14 @@ class JobExecution:
                 await session.commit()
                 return None
 
-            exploit = await self._exploits.ensure_exploit(job.exploit_id)
-            if exploit.status is not LocalExploitStatus.FINISHED:
-                print(f"Got error exploit {exploit.build_output}")
-                print(f"   {exploit}")
+            local_exploit = await self._exploits.ensure_exploit(job.exploit)
+            if local_exploit.status is not LocalExploitStatus.FINISHED:
+                print(f"Got error exploit {local_exploit.build_output}")
+                print(f"   {local_exploit}")
                 job.status = JobExecutionStatus.FAILED
                 for e in executions:
                     e.status = JobExecutionStatus.FAILED
-                    e.stderr = exploit.build_output
+                    e.stderr = local_exploit.build_output
                 await session.commit()
                 return None
 
@@ -143,12 +153,12 @@ class JobExecution:
             for e in executions:
                 e.status = JobExecutionStatus.RUNNING
                 local_executions += [
-                    LocalExecution(e.id, exploit, LocalTarget(e.target.ip, e.target.extra), JobExecutionStatus.RUNNING)]
+                    LocalExecution(e.id, local_exploit, LocalTarget(e.target.ip, e.target.extra), JobExecutionStatus.RUNNING)]
 
             await session.commit()
 
             # Convert data to local for usage without database
-            return LocalJob(exploit, job.timeout.timestamp(), local_executions)
+            return LocalJob(local_exploit, job.timeout.timestamp(), local_executions)
 
     async def submit_to_database(self, results: [LocalExecution]):
         local_executions = {e.database_id: e for e in results}
@@ -177,10 +187,13 @@ class JobExecution:
     async def docker_execute(self, container_ref, execution: LocalExecution) -> LocalExecution:
         async def exec_in_container_and_poll_output():
             try:
-                exec_ref = await container_ref.exec(cmd=execution.exploit.docker_cmd, workdir="/exploit", tty=False, environment={
-                    "TARGET_IP": execution.target.ip,
-                    "TARGET_EXTRA": execution.target.extra,
-                })
+                exec_ref = await container_ref.exec(cmd=execution.exploit.docker_cmd, workdir="/exploit", tty=False,
+                                                    environment={
+                                                        "ATAKA_CENTRAL_EXECUTION": "TRUE",
+                                                        "TARGET_IP": execution.target.ip,
+                                                        "TARGET_EXTRA": execution.target.extra,
+                                                        "ATAKA_EXPLOIT_ID": execution.exploit.id,
+                                                    })
                 async with exec_ref.start(detach=False) as stream:
                     while True:
                         message = await stream.read_out()
