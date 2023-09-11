@@ -208,6 +208,9 @@ By default, all targets are enabled.
 To see which targets are enabled for a history, use `atk exploit target ls`.
 You can enable/disable targets for a history with `atk exploit target on/off` (they both support `--all` to mean "all known targets").
 
+Enabling one or multiple targets also schedules a new job for immediate central execution for the specified target(s), even if said target is already enabled.
+You can use this to re-run a central execution if necessary.
+
 ## Manual flag submission
 
 You can manually submit flags:
