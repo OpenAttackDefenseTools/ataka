@@ -1,4 +1,5 @@
 import os
+import re
 import time
 from datetime import datetime
 
@@ -9,7 +10,9 @@ from requests import JSONDecodeError
 from rich import print
 from rich.text import Text
 
+
 CHECK_FOR_CMD = re.compile(r'CMD\s+\[\s+(.+)\s+\]')
+
 
 def colorfy(msg, color):
     return f'[bold {color}]{msg}[/bold {color}]'
