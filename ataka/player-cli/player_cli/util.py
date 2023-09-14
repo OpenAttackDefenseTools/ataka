@@ -11,7 +11,7 @@ from rich import print
 from rich.text import Text
 
 
-CHECK_FOR_CMD = re.compile(r'CMD\s+\[\s+(.+)\s+\]')
+CHECK_FOR_CMD = re.compile(r'CMD\s*\[\s*(.+)\s*\]')
 
 
 def colorfy(msg, color):
@@ -112,15 +112,41 @@ def highlight_flags(s, func):
 
 
 def parse_dockerfile_cmd(content: str) -> list[str] | None:
+    """ Extractes the CMD-Block out of a dockerfile and parses it
+
+    Args:
+        content (str): The content of the dockerfile
+
+    Returns:
+        list[str] | None: Either a list containing the programm and 
+                          the arguments, in a special uecase an empty list
+                          (see examples) or None
+
+    Usage examples:
+    >>> parse_dockerfile_cmd('CMD [ "prog"]')
+    ['prog']
+    >>> parse_dockerfile_cmd("CMD [ 'prog','arg1']")
+    ['prog', 'arg1']
+    >>> parse_dockerfile_cmd('CMD [ "prog", \\'arg1\\']')
+    ['prog', 'arg1']
+    >>> parse_dockerfile_cmd("CMD [ \\"prog\\", 'arg1']")
+    ['prog', 'arg1']
+    >>> parse_dockerfile_cmd('CMD []') is None
+    True
+    >>> parse_dockerfile_cmd('CMD [ ]') # In this case, a empty list is returned
+    []
+    """
     matches = CHECK_FOR_CMD.findall(content)
     if matches:
         ret_arguments = []
         for argument in matches[-1].split(","):
+            argument = argument.strip()
+            # If the length is zero, don't add an empty string
+            if len(argument) == 0:
+                continue
+
             ret_arguments.append(
-                # Partition the string on the first "
-                argument.partition("\"")[2]\
-                # and on the last "
-                .rpartition("\"")[0]
+                argument[1:-1]
             )
 
         return ret_arguments
