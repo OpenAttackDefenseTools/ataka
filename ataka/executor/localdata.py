@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 
-from ataka.common.database.models import JobExecutionStatus
+from ataka.common.job_execution_status import JobExecutionStatus
 
 
 class LocalExploitStatus(str, Enum):
@@ -12,7 +12,10 @@ class LocalExploitStatus(str, Enum):
 
 @dataclass
 class LocalExploit:
-    file: str
+    id: str
+    service: str
+    author: str
+    docker_name: str
     status: LocalExploitStatus
     build_output: str = ""
     docker_id: str = None

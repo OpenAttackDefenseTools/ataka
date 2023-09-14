@@ -1,1 +1,1 @@
-typer
+typer[all]

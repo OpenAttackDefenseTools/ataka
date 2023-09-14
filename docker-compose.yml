@@ -7,6 +7,8 @@ version: '3'
 services:
   rabbitmq:
     image: rabbitmq:3.9-management-alpine
+    restart: always
+    init: true
     expose:
       - "15672"
       - "5672"
@@ -17,25 +19,28 @@ services:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
     volumes:
-      - rabbitmq-data:/var/lib/rabbitmq:rw,Z
+      - rabbitmq-data:/var/lib/rabbitmq:rw
 
   postgres:
     image: postgres:14-alpine
+    restart: always
+    init: true
     hostname: ataka-postgres
-    expose:
-      - "5432"
+    ports:
+      - "5432:5432"
     networks:
       - ataka
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - postgres-data:/var/lib/postgresql/data:rw,Z
+      - postgres-data:/var/lib/postgresql/data:rw
 
   adminer:
     image: adminer:latest
-    expose:
-      - "8080"
+    restart: always
+    ports:
+      - "8080:8080"
     hostname: ataka-adminer
     networks:
       - ataka
@@ -44,17 +49,17 @@ services:
 
   api:
     image: openattackdefensetools/ataka-api
+    restart: always
+    init: true
     user: $USERID
     build:
       context: ./
       dockerfile: ataka/api/Dockerfile
-      args:
-        CTF: $CTF
     volumes:
       - ${DATA_STORE}/shared:/data/shared:rw,z
       - ${DATA_STORE}/exploits:/data/exploits:rw,z
-    expose:
-      - "8000"
+    ports:
+      - "8000:8000"
     security_opt:
       - label:disable
     depends_on:
@@ -68,6 +73,8 @@ services:
 
   executor:
     image: openattackdefensetools/ataka-executor
+    restart: always
+    init: true
     user: $USERID
     build:
       context: ./
@@ -88,8 +95,20 @@ services:
     env_file:
       - .env
 
+  exploit:
+    image: alpine:latest
+    command: "sleep infinity"
+    restart: always
+    init: true
+    user: $USERID
+    container_name: ataka-exploit
+    networks:
+      - ataka-exploits
+
   ctfcode:
     image: openattackdefensetools/ataka-ctfcode
+    restart: always
+    init: true
     user: $USERID
     build:
       context: ./
@@ -111,6 +130,8 @@ services:
 
   cli:
     image: openattackdefensetools/ataka-cli
+    restart: always
+    init: true
     user: $USERID
     build:
       context: ./
@@ -131,3 +152,4 @@ volumes:
 
 networks:
   ataka:
+  ataka-exploits:

@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import traceback
 
 from .config import engine, Base, async_session
 
@@ -18,5 +19,5 @@ async def get_session():
         async with async_session() as session:
             yield session
     except Exception as e:
-        print(e)
+        traceback.print_exception(e)
         raise e

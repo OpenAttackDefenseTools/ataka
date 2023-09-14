@@ -1,2 +1,3 @@
-requests==2.27.1
-pwntools
+requests==2.31.0
+pwntools==4.10.0
+exrex==0.11.0

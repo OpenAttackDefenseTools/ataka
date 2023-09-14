@@ -10,21 +10,22 @@ Update config:
 `atk reload`
 
 Create exploit template:
-`atk exploit template <python/ubuntu> <directory>`
+`atk exploit template <python/ubuntu>[:version] <directory>`
 
-Run exploit locally:
-`atk exploit runlocal --all-targets <directory> <service> <exploitId>`
+List services / flag ids:
+`atk flag ids [--all-targets]`
+
+Run exploit locally testing:
+`atk exploit runlocal <directory> <service>`
+
+Run exploit locally against everyone:
+`atk exploit runlocal --all-targets <directory> <service>`
 
 Create exploit on the server:
 `atk exploit create <exploitName> <service>`
-ATTENTION: exploitName: no uppercase letters, no underscores
 
 Upload exploit:
 `atk exploit upload <exploitName> <yourName> <directoryWithDockerFile>`
--> returns exploitID
-
-Run exploit: 
-`atk exploit activate <exploitID>`
 
 Logs:
 `atk exploit logs <exploitID> -n <numberOfIterations>`
