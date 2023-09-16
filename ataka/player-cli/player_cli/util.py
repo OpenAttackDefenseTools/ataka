@@ -1,14 +1,17 @@
 import os
+import re
 import time
-import typer
-import requests
-from requests import JSONDecodeError
-from rich.text import Text
+from datetime import datetime
 
 import player_cli
+import requests
+import typer
+from requests import JSONDecodeError
 from rich import print
+from rich.text import Text
 
-from datetime import datetime
+
+CHECK_FOR_CMD = re.compile(r'CMD\s*\[\s*(.+)\s*\]')
 
 
 def colorfy(msg, color):
@@ -108,27 +111,43 @@ def highlight_flags(s, func):
     return player_cli.ctfconfig_wrapper.FLAG_FINDER.sub(repl, s)
 
 
-def parse_dockerfile_cmd(content):
-    exec_args = None
+def parse_dockerfile_cmd(content: str) -> list[str] | None:
+    """ Extractes the CMD-Block out of a dockerfile and parses it
 
-    for line in content.splitlines():
-        line = line.strip()
+    Args:
+        content (str): The content of the dockerfile
 
-        if not line.startswith('CMD '):
-            continue
-        line = line[4:].strip()
+    Returns:
+        list[str] | None: Either a list containing the programm and 
+                          the arguments, in a special uecase an empty list
+                          (see examples) or None
 
-        if line[0] != '[' or line[-1] != ']':
-            continue
-        line = line[1:-1].strip()
+    Usage examples:
+    >>> parse_dockerfile_cmd('CMD [ "prog"]')
+    ['prog']
+    >>> parse_dockerfile_cmd("CMD [ 'prog','arg1']")
+    ['prog', 'arg1']
+    >>> parse_dockerfile_cmd('CMD [ "prog", \\'arg1\\']')
+    ['prog', 'arg1']
+    >>> parse_dockerfile_cmd("CMD [ \\"prog\\", 'arg1']")
+    ['prog', 'arg1']
+    >>> parse_dockerfile_cmd('CMD []') is None
+    True
+    >>> parse_dockerfile_cmd('CMD [ ]') # In this case, a empty list is returned
+    []
+    """
+    matches = CHECK_FOR_CMD.findall(content)
+    if matches:
+        ret_arguments = []
+        for argument in matches[-1].split(","):
+            argument = argument.strip()
+            # If the length is zero, don't add an empty string
+            if len(argument) == 0:
+                continue
 
-        args = []
-        for arg in line.split(','):
-            arg = arg.strip()
-            if arg[0] != '"' or arg[-1] != '"':
-                break
-            args.append(arg[1:-1])
-        else:
-            exec_args = args
+            ret_arguments.append(
+                argument[1:-1]
+            )
 
-    return exec_args
+        return ret_arguments
+    return None
