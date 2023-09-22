@@ -152,4 +152,19 @@ volumes:
 
 networks:
   ataka:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-ataka
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: 2001:0DB8::/112
+
   ataka-exploits:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-exploits
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: 2001:0DB9::/112
