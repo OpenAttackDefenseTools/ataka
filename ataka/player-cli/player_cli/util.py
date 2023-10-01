@@ -9,6 +9,7 @@ import typer
 from requests import JSONDecodeError
 from rich import print
 from rich.text import Text
+from rich.markup import escape
 
 
 CHECK_FOR_CMD = re.compile(r'CMD\s*\[\s*(.+)\s*\]')
@@ -47,22 +48,22 @@ NOTICE_STR = blueify('NOTICE')
 def request(method, endpoint, data=None, params=None):
     if player_cli.state['bypass_tools']:
         if player_cli.state['debug']:
-            print(f"{DEBUG_STR}: {method} {endpoint}{'' if params is None else f' with params {params}'}")
+            print(f"{DEBUG_STR}: {yellowfy('BYPASS')} " + escape(f"{method} {endpoint}{'' if params is None else f' with params {params}'}"))
             if data is not None:
-                print(f"{DEBUG_STR}: {data}")
+                print(f"{DEBUG_STR}: {yellowfy('BYPASS')} " + escape(data))
             print(f"{DEBUG_STR}: ")
 
         result = player_cli.ctfconfig_wrapper.request(method, endpoint, data=data)
         if player_cli.state['debug']:
-            print(f"{DEBUG_STR}: {result}")
+            print(f"{DEBUG_STR}: {yellowfy('BYPASS')} " + escape(result))
         return result
 
     url = f'http://{player_cli.state["host"]}/api/{endpoint}'
 
     if player_cli.state['debug']:
-        print(f"{DEBUG_STR}: {method} {url}{'' if params is None else f' with params {params}'}")
+        print(f"{DEBUG_STR}: " + escape(f"{method} {url}{'' if params is None else f' with params {params}'}"))
         if data is not None:
-            print(f"{DEBUG_STR}: {data}")
+            print(f"{DEBUG_STR}: " + escape(data))
         print(f"{DEBUG_STR}: ")
 
     func = {
@@ -73,15 +74,15 @@ def request(method, endpoint, data=None, params=None):
     }[method]
     response = func(url, json=data, params=params)
     if player_cli.state['debug']:
-        print(f"{DEBUG_STR}: {response.status_code} {response.reason}")
-        print(f"{DEBUG_STR}: {response.json()}")
+        print(f"{DEBUG_STR}: " + escape(f"{response.status_code} {response.reason}"))
+        print(f"{DEBUG_STR}: " + escape(response.json()))
 
     if response.status_code != 200:
-        print(f"{ERROR_STR}: {method} {endpoint} returned status code {response.status_code} {response.reason}")
+        print(f"{ERROR_STR}: " + escape(f"{method} {endpoint} returned status code {response.status_code} {response.reason}"))
         try:
-            print(f"{ERROR_STR}: {response.json()}")
+            print(f"{ERROR_STR}: " + escape(response.json()))
         except JSONDecodeError:
-            print(f"{ERROR_STR}: {response.text}")
+            print(f"{ERROR_STR}: " + escape(response.text))
         raise typer.Exit(code=1)
     return response.json()
 
