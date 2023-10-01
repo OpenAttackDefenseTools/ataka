@@ -15,3 +15,4 @@ mkdir -p player-cli/ataka/common
 cp /ataka/common/flag_status.py player-cli/ataka/common/flag_status.py
 pip install -r player-cli/requirements.txt --target player-cli/
 python -m zipapp -c --python "/usr/bin/env python3" --output /data/shared/ataka-player-cli.pyz player-cli/
+echo 'Python player created'
