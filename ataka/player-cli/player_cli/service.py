@@ -5,7 +5,7 @@ import typer
 from player_cli.exploit.target import get_targets
 from player_cli.util import magentify
 
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 @app.command('ls', help='List services (legacy)')
 def service_ls():

@@ -14,7 +14,7 @@ state = {
     'debug': False
 }
 
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 app.add_typer(player_cli.exploit.app,
               name='exploit', help='Manage exploits.')
