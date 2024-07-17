@@ -11,7 +11,7 @@ from player_cli.ctfconfig_wrapper import RUNLOCAL_TARGETS
 from player_cli.exploit import get_targets
 from player_cli.util import request, ERROR_STR, magentify, greenify, blueify, redify, yellowfy
 
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
 
 FLAG_STATUS_IS_FINAL = {'ok', 'duplicate', 'duplicate_not_submitted', 'nop', 'ownflag', 'inactive', 'invalid'}
 
