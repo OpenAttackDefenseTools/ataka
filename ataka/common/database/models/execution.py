@@ -14,7 +14,7 @@ class Execution(Base, JsonBase):
     status = Column(Enum(JobExecutionStatus))
     stdout = Column(UnicodeText)
     stderr = Column(UnicodeText)
-    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
     job = relationship("Job", back_populates="executions")
     target = relationship("Target")

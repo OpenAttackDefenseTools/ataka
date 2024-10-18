@@ -5,7 +5,6 @@ from contextlib import asynccontextmanager
 import aio_pika
 from aio_pika import RobustConnection
 
-from .flag import *
 from .job import *
 from .output import *
 

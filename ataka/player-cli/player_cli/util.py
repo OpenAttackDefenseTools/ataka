@@ -50,12 +50,12 @@ def request(method, endpoint, data=None, params=None):
         if player_cli.state['debug']:
             print(f"{DEBUG_STR}: {yellowfy('BYPASS')} " + escape(f"{method} {endpoint}{'' if params is None else f' with params {params}'}"))
             if data is not None:
-                print(f"{DEBUG_STR}: {yellowfy('BYPASS')} " + escape(data))
+                print(f"{DEBUG_STR}: {yellowfy('BYPASS')} " + escape(str(data)))
             print(f"{DEBUG_STR}: ")
 
         result = player_cli.ctfconfig_wrapper.request(method, endpoint, data=data)
         if player_cli.state['debug']:
-            print(f"{DEBUG_STR}: {yellowfy('BYPASS')} " + escape(result))
+            print(f"{DEBUG_STR}: {yellowfy('BYPASS')} " + escape(str(result)))
         return result
 
     url = f'http://{player_cli.state["host"]}/api/{endpoint}'
@@ -63,24 +63,18 @@ def request(method, endpoint, data=None, params=None):
     if player_cli.state['debug']:
         print(f"{DEBUG_STR}: " + escape(f"{method} {url}{'' if params is None else f' with params {params}'}"))
         if data is not None:
-            print(f"{DEBUG_STR}: " + escape(data))
+            print(f"{DEBUG_STR}: " + escape(str(data)))
         print(f"{DEBUG_STR}: ")
 
-    func = {
-        'GET': requests.get,
-        'PUT': requests.put,
-        'POST': requests.post,
-        'PATCH': requests.patch,
-    }[method]
-    response = func(url, json=data, params=params)
+    response = requests.request(method, url, json=data, params=params)
     if player_cli.state['debug']:
         print(f"{DEBUG_STR}: " + escape(f"{response.status_code} {response.reason}"))
-        print(f"{DEBUG_STR}: " + escape(response.json()))
+        print(f"{DEBUG_STR}: " + escape(str(response.json())))
 
     if response.status_code != 200:
         print(f"{ERROR_STR}: " + escape(f"{method} {endpoint} returned status code {response.status_code} {response.reason}"))
         try:
-            print(f"{ERROR_STR}: " + escape(response.json()))
+            print(f"{ERROR_STR}: " + escape(str(response.json())))
         except JSONDecodeError:
             print(f"{ERROR_STR}: " + escape(response.text))
         raise typer.Exit(code=1)

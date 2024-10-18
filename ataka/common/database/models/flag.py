@@ -10,7 +10,7 @@ class Flag(Base, JsonBase):
 
     id = Column(Integer, primary_key=True)
     flag = Column(String, index=True)
-    status = Column(Enum(FlagStatus))
+    status = Column(Enum(FlagStatus), index=True)
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
 
     execution_id = Column(Integer, ForeignKey("executions.id"), index=True)
