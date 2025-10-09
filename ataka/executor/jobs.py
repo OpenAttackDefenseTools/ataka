@@ -208,7 +208,7 @@ class JobExecution:
                         if message is None:
                             break
 
-                        yield message[0], message[1].decode()
+                        yield message[0], message[1].decode(errors='ignore')
             except DockerError as e:
                 print(f"DOCKER EXECUTION ERROR for {execution.exploit.id} (service {execution.exploit.service}) " \
                       f"by {execution.exploit.author} against target {execution.target.ip}\n" \
