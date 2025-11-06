@@ -32,8 +32,10 @@ def expect(validator=lambda *args, **kwargs: True):
         def wrapper(*args, **kwargs):
             result = func(*args, **kwargs)
             if not validator(result, *args, **kwargs):
-                logging.error(f"CTF Config returned unexpected result for "
-                              f"{func.__name__}({', '.join([repr(x) for x in args] + [str(k) + '=' + repr(v) for k, v in kwargs.items()])})")
+                logging.error(
+                    f"CTF Config returned unexpected result for "
+                    f"{func.__name__}({', '.join([repr(x) for x in args] + [str(k) + '=' + repr(v) for k, v in kwargs.items()])})"
+                )
                 logging.error(result)
             return result
 
@@ -53,7 +55,7 @@ class CTF:
 
     def package_player_cli(self):
         logging.info("Packaging player-cli")
-        Popen(['/ataka/player-cli/package_player_cli.sh'])
+        Popen(["/ataka/player-cli/package_player_cli.sh"])
 
     @catch(default=None)
     def reload(self):
@@ -64,12 +66,16 @@ class CTF:
         self._self_test()
 
     @catch(default=[])
-    @expect(validator=lambda x, self: type(x) == list and all([type(s) == str for s in x]))
+    @expect(
+        validator=lambda x, self: type(x) == list and all([type(s) == str for s in x])
+    )
     def get_runlocal_targets(self):
         return self._module.RUNLOCAL_TARGETS
 
     @catch(default=set())
-    @expect(validator=lambda x, self: type(x) == set and all([type(s) == str for s in x]))
+    @expect(
+        validator=lambda x, self: type(x) == set and all([type(s) == str for s in x])
+    )
     def get_static_exclusions(self):
         return self._module.STATIC_EXCLUSIONS
 
@@ -79,10 +85,14 @@ class CTF:
         return self._module.ROUND_TIME
 
     @catch(default=(r".*", 0))
-    @expect(validator=lambda x, self: type(x) == tuple and len(x) == 2 and type(x[0]) == str and type(x[1]) == int and
-                                      0 <= x[1] < 100)
-    def get_flag_regex(self):
-        return self._module.FLAG_REGEX
+    # @expect(validator=lambda x, self: type(x) == tuple and len(x) == 2 and type(x[0]) == str and type(x[1]) == int and
+    #                                   0 <= x[1] < 100)
+    def get_flag_regex(self, service=None):
+        if service:
+            #            print(f"using regex for {service}: {self._module.FLAG_REGEX[service]}")
+            return self._module.FLAG_REGEX[service]
+        else:
+            return self._module.FLAG_REGEX
 
     @catch(default=100)
     @expect(validator=lambda x, self: type(x) == int and 0 < x < 25000)
@@ -90,12 +100,18 @@ class CTF:
         return self._module.FLAG_BATCHSIZE
 
     @catch(default=1)
-    @expect(validator=lambda x, self: (type(x) == int or type(x) == float) and 0 < x < self.get_round_time())
+    @expect(
+        validator=lambda x, self: (type(x) == int or type(x) == float)
+        and 0 < x < self.get_round_time()
+    )
     def get_flag_ratelimit(self):
         return self._module.FLAG_RATELIMIT
 
     @catch(default=1577840400)
-    @expect(validator=lambda x, self: type(x) == int and (abs(time.time() - x) // 60 // 60 // 24) < 30)
+    @expect(
+        validator=lambda x, self: type(x) == int
+        and (abs(time.time() - x) // 60 // 60 // 24) < 30
+    )
     def get_start_time(self):
         return self._module.START_TIME
 
@@ -107,19 +123,34 @@ class CTF:
         return self.get_start_time() + self.get_round_time() * (self.get_cur_tick() + 1)
 
     @catch(default={})
-    @expect(validator=lambda x, self: type(x) == dict and all(
-        [type(service) == str and type(item) == list and all(
-            ['ip' in entry and 'extra' in entry and type(entry['ip']) == str and type(entry['extra'] == str)
-             for entry in item]
-        ) for service, item in x.items()]
-    ))
+    @expect(
+        validator=lambda x, self: type(x) == dict
+        and all(
+            [
+                type(service) == str
+                and type(item) == list
+                and all(
+                    [
+                        "ip" in entry
+                        and "extra" in entry
+                        and type(entry["ip"]) == str
+                        and type(entry["extra"] == str)
+                        for entry in item
+                    ]
+                )
+                for service, item in x.items()
+            ]
+        )
+    )
     def get_targets(self):
         return self._module.get_targets()
 
     @catch(default=[])
-    @expect(validator=lambda x, self, flags: type(x) == list and len(x) == len(flags) and all(
-        [type(status) == FlagStatus for status in x]
-    ))
+    @expect(
+        validator=lambda x, self, flags: type(x) == list
+        and len(x) == len(flags)
+        and all([type(status) == FlagStatus for status in x])
+    )
     def submit_flags(self, flags):
         return self._module.submit_flags(flags)
 
@@ -145,7 +176,9 @@ class CTF:
             status_list = self.submit_flags(fake_flags)
             for flag, status in zip(fake_flags, status_list):
                 logging.info(f"    {flag} -> {status}")
-            logging.info("Test finished (if you only see flag submission results, everything is good)")
+            logging.info(
+                "Test finished (if you only see flag submission results, everything is good)"
+            )
         except Exception as e:
             logging.error(f"Self-Test FAILED")
             logging.error(traceback.format_exc())

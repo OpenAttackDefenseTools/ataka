@@ -7,7 +7,9 @@ import re
 
 from .ctfconfig import *
 
-FLAG_FINDER = re.compile(FLAG_REGEX[0])
+for key in FLAG_REGEX.keys():
+    tmp = key
+FLAG_FINDER = re.compile(FLAG_REGEX[tmp][0])
 
 def _parse_and_submit_content(data: str):
     from player_cli.flags import FLAG_STATUS_COLOR
