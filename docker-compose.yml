@@ -27,8 +27,8 @@ services:
     init: true
     shm_size: 1g
     hostname: ataka-postgres
-    ports:
-      - "5432:5432"
+    # ports:
+    #   - "5432:5432"
     networks:
       - ataka
     environment:
